@@ -165,7 +165,11 @@ final class HUDController {
         model.scale = scale
 
         let mouse = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main else { return }
+        var screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main
+        #if DEBUG
+        if let debugScreen = DebugHooks.screen { screen = debugScreen }
+        #endif
+        guard let screen else { return }
         let side = HUDLayout.canvas * scale
         let frameSide = side + HUDRootView.shadowMargin * 2
         let visible = screen.visibleFrame
@@ -233,6 +237,9 @@ final class HUDController {
             model.phase += Self.tick * 9
         }
         guard model.fired == nil else { return }
+        #if DEBUG
+        if DebugHooks.freezeHighlight { return }
+        #endif
         if let at = keyboardPointer {
             guard hypot(mouse.x - at.x, mouse.y - at.y) > 4 else { return }
             keyboardPointer = nil
@@ -240,6 +247,17 @@ final class HUDController {
         let chosen = HUDLayout.selection(at: local, centers: model.centers, style: model.visualization.selection)
         setHighlight(chosen)
     }
+
+    #if DEBUG
+    /// Shows `visualization` with button `highlight` lit, ignoring the pointer, for screenshots.
+    func debugShow(_ visualization: Visualization, highlight: Int) {
+        DebugHooks.freezeHighlight = true
+        show(atScreenCenter: true)
+        model.visualization = visualization
+        model.highlighted = highlight
+        if visualization == .dial { model.turnDial(to: highlight) }
+    }
+    #endif
 
     private func setHighlight(_ index: Int?) {
         guard index != model.highlighted else { return }

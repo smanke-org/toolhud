@@ -50,6 +50,10 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         window?.makeKeyAndOrderFront(nil)
     }
 
+    #if DEBUG
+    var debugWindow: NSWindow? { window }
+    #endif
+
     fileprivate func paneChanged(_ pane: SettingsPane) {
         window?.title = pane.title
     }

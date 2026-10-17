@@ -22,6 +22,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // Set at the end of the first launch, so its absence means a brand-new install.
         let newInstall = !UserDefaults.standard.bool(forKey: "askedForAccessibility")
+        #if DEBUG
+        // Screenshot runs share the installed app's settings, so they stage and stop there.
+        if DebugHooks.run() { return }
+        #endif
         if newInstall { SettingsSync.shared.adoptOnNewInstall() }
         SettingsSync.shared.start()
 
