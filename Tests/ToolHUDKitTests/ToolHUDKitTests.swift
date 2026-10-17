@@ -210,3 +210,69 @@ import Testing
     let (_, other) = try SyncCrypto.createKeyring(passphrase: "x", iterations: 1_000)
     #expect(throws: SyncCrypto.CryptoError.self) { try SyncCrypto.open(sealed, using: other) }
 }
+
+// MARK: - Key sequences
+
+/// A US-English stand-in for the keyboard layout lookup.
+private func usKey(_ c: Character) -> (keyCode: UInt16, shift: Bool)? {
+    let plain: [Character: UInt16] = ["a": 0, "s": 1, "d": 2, "k": 40, "t": 17, "/": 44, "1": 18, " ": 49]
+    if let code = plain[c] { return (code, false) }
+    if c == "?" { return (44, true) }
+    return nil
+}
+
+@Test func lettersAreTheirKeysWithoutShift() {
+    let parsed = KeySequence.parse("K", modifiers: [.command], lookup: usKey)
+    #expect(parsed.unknown.isEmpty)
+    #expect(parsed.sequence.keys == [KeyPress(keyCode: 40, key: "K")])
+    #expect(parsed.sequence.display == "⌘K")
+}
+
+@Test func severalKeysArePressedInTurnWithTheSameModifiers() {
+    let parsed = KeySequence.parse("ks", modifiers: [.command, .shift], lookup: usKey)
+    #expect(parsed.sequence.keys.map(\.keyCode) == [40, 1])
+    #expect(parsed.sequence.display == "⇧⌘K ⇧⌘S")
+}
+
+@Test func shiftedSymbolsHoldShiftForThatKeyOnly() {
+    let parsed = KeySequence.parse("?a", modifiers: [.control], lookup: usKey)
+    #expect(parsed.sequence.keys == [KeyPress(keyCode: 44, key: "?", shift: true), KeyPress(keyCode: 0, key: "A")])
+    #expect(parsed.sequence.display == "⌃⇧? ⌃A")
+}
+
+@Test func specialKeysComeFromSymbolsAndBrackets() {
+    let parsed = KeySequence.parse("↩[F5][Space]⇥", modifiers: [], lookup: usKey)
+    #expect(parsed.unknown.isEmpty)
+    #expect(parsed.sequence.keys.map(\.keyCode) == [KeyCode.returnKey, 96, KeyCode.space, KeyCode.tab])
+    #expect(parsed.sequence.keys.map(\.key) == ["↩", "F5", "Space", "⇥"])
+}
+
+@Test func untypeableCharactersAreReported() {
+    let parsed = KeySequence.parse("aé[Nope]", modifiers: [], lookup: usKey)
+    #expect(parsed.sequence.keys.count == 1)
+    #expect(parsed.unknown == ["é", "[Nope]"])
+}
+
+@Test func everySpecialKeyInTheMenuParses() {
+    for key in KeyNames.insertable {
+        let parsed = KeySequence.parse(key.token, modifiers: [], lookup: usKey)
+        #expect(parsed.unknown.isEmpty && parsed.sequence.keys.count == 1, "\(key.title)")
+    }
+}
+
+@Test func buttonsSavedAsOneShortcutStillPressIt() throws {
+    let json = #"{"name":"Old","symbol":"keyboard","mode":"keystroke","shortcut":{"keyCode":17,"modifiers":11,"key":"T"},"sendTo":{"frontmost":{}}}"#
+    let slot = try JSONDecoder().decode(Slot.self, from: Data(json.utf8))
+    #expect(slot.keys == nil)
+    #expect(slot.keySequence?.display == "⌃⌥⌘T")
+    #expect(slot.keySequence?.text == "T")
+    // The field's text reads back as the same key.
+    #expect(KeySequence.parse("T", modifiers: slot.keySequence!.modifiers, lookup: usKey).sequence.keys.map(\.keyCode) == [17])
+}
+
+@Test func keySequencesRoundTripThroughRingFiles() throws {
+    var slot = Slot.empty()
+    slot.keys = KeySequence.parse("k↩", modifiers: [.command], lookup: usKey).sequence
+    let file = try RingFile.decode(RingFile(visualization: .halo, slots: [slot]).encoded())
+    #expect(file.slots.first?.keys == slot.keys)
+}

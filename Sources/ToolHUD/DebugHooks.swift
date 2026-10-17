@@ -7,11 +7,21 @@ import ToolHUDKit
 ///
 ///   TOOLHUD_DEBUG_HUD=halo:0           opens that look with button 0 lit
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
+///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
+///   TOOLHUD_DEBUG_BUTTON=<index>         starts Settings › Buttons on that button
+///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
+///                                      presses those keys, only if that app is in front
 ///
 /// Both open on the first Retina display, so the shots are taken at 2×.
 @MainActor
 enum DebugHooks {
     static var freezeHighlight = false
+
+    /// A lens app to treat as not installed, to see how Settings shows a missing app.
+    static var missingApp: String? { ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_MISSING"] }
+
+    /// The button Settings › Buttons starts on (0-based).
+    static var selectedButton: Int? { ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_BUTTON"].flatMap { Int($0) } }
 
     static func trace(_ s: String) {
         guard let path = ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_TRACE"] else { return }
@@ -31,6 +41,21 @@ enum DebugHooks {
             let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 MainActor.assumeIsolated { HUDController.shared.debugShow(look, highlight: index) }
+            }
+            return true
+        }
+        if let text = env["TOOLHUD_DEBUG_POST_TEXT"], let target = env["TOOLHUD_DEBUG_POST_ONLY_TO"] {
+            // Presses the keys, but only into the named app, so a stray run can't type into
+            // whatever else is in front.
+            let modifiers = KeyModifiers(rawValue: Int(env["TOOLHUD_DEBUG_POST_MODS"] ?? "") ?? 0)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                MainActor.assumeIsolated {
+                    let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? ""
+                    guard front == target else { trace("not posted: \(front) is in front"); exit(2) }
+                    let sequence = KeySequence.parse(text, modifiers: modifiers, lookup: KeyboardLayout.key(for:)).sequence
+                    trace("posting \(sequence.display)")
+                    ActionRunner.post(sequence)
+                }
             }
             return true
         }

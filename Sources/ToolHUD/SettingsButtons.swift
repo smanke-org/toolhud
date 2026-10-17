@@ -48,6 +48,9 @@ struct ButtonsSettings: View {
             SlotEditor(slot: slot, number: index + 1, reset: { prefs.slots[index] = DefaultRing.slots[index] },
                        importRing: importRing, exportRing: exportRing, importError: importError)
         }
+        #if DEBUG
+        .onAppear { if let button = DebugHooks.selectedButton { selection = button } }
+        #endif
     }
 
     private func exportRing() {
@@ -88,7 +91,7 @@ struct SlotRow: View {
                 .background(slot.tint.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             VStack(alignment: .leading, spacing: 1) {
                 Text(slot.name).lineLimit(1)
-                Text(slot.mode == .lens ? (slot.appName ?? "Lens action") : (slot.shortcut?.display ?? "Keystroke"))
+                Text(slot.mode == .lens ? (slot.appName ?? "Lens action") : (slot.keySequence?.display ?? "Keystroke"))
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
@@ -208,6 +211,12 @@ struct SlotEditor: View {
         Label(status.text, systemImage: status.ok ? "checkmark.circle" : "exclamationmark.triangle")
             .font(.callout)
             .foregroundStyle(status.ok ? Color.secondary : Color.orange)
+        if let id = slot.lensApp, let app = directory.app(id), directory.installed[id] == nil {
+            LabeledContent("") {
+                Link("Get \(app.name) at stevemanke.com", destination: LensDirectory.webPage(for: app))
+            }
+            .font(.callout)
+        }
     }
 
     /// A new app starts at its first feature.
@@ -236,10 +245,8 @@ struct SlotEditor: View {
     // MARK: Keystroke
 
     @ViewBuilder private var keystrokeFields: some View {
-        LabeledContent("Keys to press") {
-            ShortcutRecorder(shortcut: $slot.shortcut, requireModifier: false, placeholder: "Click to record")
-        }
-        if let shortcut = slot.shortcut, let hud = prefs.hotKey, shortcut.sameKeys(as: hud) {
+        KeystrokeFields(slot: $slot)
+        if slot.keySequence?.keys.count == 1, let first = slot.keySequence?.first, let hud = prefs.hotKey, first.sameKeys(as: hud) {
             Label("That's the shortcut that opens ToolHUD, so this button would just reopen the HUD.",
                   systemImage: "exclamationmark.triangle")
                 .font(.callout).foregroundStyle(.orange)
@@ -280,6 +287,95 @@ struct SlotEditor: View {
         guard panel.runModal() == .OK, let url = panel.url, let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { return }
         let name = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
         slot.sendTo = .app(bundleID: id, name: name)
+    }
+}
+
+/// The keys a keystroke button presses: modifier toggles, and a field for the key or keys
+/// to press with them. Several keys are pressed one after another, each with the same
+/// modifiers held (⌘K then ⌘S).
+struct KeystrokeFields: View {
+    @Binding var slot: Slot
+    @State private var text = ""
+    @State private var modifiers: KeyModifiers = []
+    @State private var unknown: [String] = []
+
+    /// In the order the user reads them on the keyboard's left side.
+    private static let toggles: [(modifier: KeyModifiers, symbol: String, name: String)] = [
+        (.command, "command", "Command"), (.option, "option", "Option"),
+        (.control, "control", "Control"), (.shift, "shift", "Shift"),
+    ]
+
+    var body: some View {
+        LabeledContent("Hold") {
+            HStack(spacing: 6) {
+                ForEach(Self.toggles, id: \.name) { toggle in
+                    let on = modifiers.contains(toggle.modifier)
+                    Button {
+                        if on { modifiers.remove(toggle.modifier) } else { modifiers.insert(toggle.modifier) }
+                        save()
+                    } label: {
+                        Image(systemName: toggle.symbol)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(on ? Color.white : Color.primary)
+                            .frame(width: 34, height: 26)
+                            .background(on ? Color.accentColor : Color.secondary.opacity(0.14),
+                                        in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(on ? "\(toggle.name) is held" : "Hold \(toggle.name)")
+                    .accessibilityLabel(toggle.name)
+                    .accessibilityAddTraits(on ? [.isSelected] : [])
+                }
+            }
+        }
+        LabeledContent("Key") {
+            HStack(spacing: 6) {
+                TextField("", text: $text, prompt: Text("Type a key, like K"))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(width: 160)
+                    .onChange(of: text) { _, _ in save() }
+                Menu("Special Keys") {
+                    ForEach(KeyNames.insertable, id: \.token) { key in
+                        Button(key.title) { text += key.token }
+                    }
+                }
+                .fixedSize()
+            }
+        }
+        if let keys = slot.keySequence, !keys.keys.isEmpty {
+            LabeledContent("Presses") {
+                Text(keys.display).font(.system(.body, design: .monospaced))
+            }
+        }
+        if !unknown.isEmpty {
+            Label("No key on this keyboard types \(unknown.joined(separator: " ")), so ToolHUD leaves it out.",
+                  systemImage: "exclamationmark.triangle")
+                .font(.callout).foregroundStyle(.orange)
+        }
+        Text("Letters stand for their keys, so K is the K key; turn on Shift to press ⇧ with it. Type several keys to press them one after another, each with the modifiers above.")
+            .font(.caption).foregroundStyle(.secondary)
+            .onAppear(perform: load)
+            .onChange(of: slot.id) { _, _ in load() }
+    }
+
+    private func load() {
+        let keys = slot.keySequence
+        modifiers = keys?.modifiers ?? []
+        text = keys?.text ?? ""
+        unknown = []
+    }
+
+    private func save() {
+        let parsed = KeySequence.parse(text, modifiers: modifiers, lookup: KeyboardLayout.key(for:))
+        unknown = parsed.unknown
+        // Showing a button saved as one shortcut reads back the same keys; leave it alone
+        // until something actually changes.
+        guard parsed.sequence != slot.keySequence else { return }
+        slot.keys = parsed.sequence
     }
 }
 

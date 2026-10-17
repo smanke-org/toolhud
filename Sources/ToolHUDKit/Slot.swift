@@ -68,12 +68,21 @@ public struct Slot: Codable, Identifiable, Hashable, Sendable {
     /// The lens app's bundle identifier and the feature's identifier.
     public var lensApp: String?
     public var lensFeature: String?
+    /// A lens feature's default shortcut, pressed when its app is too old for lens actions;
+    /// before key sequences, also what a keystroke button pressed.
     public var shortcut: Shortcut?
+    /// What a keystroke button presses. nil on buttons saved before sequences.
+    public var keys: KeySequence?
     public var sendTo: SendTarget
+
+    /// The keys a keystroke button presses, including one saved as a single shortcut.
+    public var keySequence: KeySequence? {
+        keys ?? shortcut.map(KeySequence.init)
+    }
 
     public init(id: UUID = UUID(), name: String, symbol: String, color: SlotColor? = nil, mode: ActionMode,
                 lensApp: String? = nil, lensFeature: String? = nil, shortcut: Shortcut? = nil,
-                sendTo: SendTarget = .frontmost) {
+                keys: KeySequence? = nil, sendTo: SendTarget = .frontmost) {
         self.id = id
         self.name = name
         self.symbol = symbol
@@ -82,6 +91,7 @@ public struct Slot: Codable, Identifiable, Hashable, Sendable {
         self.lensApp = lensApp
         self.lensFeature = lensFeature
         self.shortcut = shortcut
+        self.keys = keys
         self.sendTo = sendTo
     }
 
@@ -99,7 +109,7 @@ public struct Slot: Codable, Identifiable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, symbol, color, mode, lensApp, lensFeature, shortcut, sendTo
+        case id, name, symbol, color, mode, lensApp, lensFeature, shortcut, keys, sendTo
     }
 
     /// Lenient: a field a later version adds, or one an imported file leaves out, falls
@@ -114,6 +124,7 @@ public struct Slot: Codable, Identifiable, Hashable, Sendable {
         lensApp = try? c.decodeIfPresent(String.self, forKey: .lensApp)
         lensFeature = try? c.decodeIfPresent(String.self, forKey: .lensFeature)
         shortcut = try? c.decodeIfPresent(Shortcut.self, forKey: .shortcut)
+        keys = try? c.decodeIfPresent(KeySequence.self, forKey: .keys)
         sendTo = (try? c.decode(SendTarget.self, forKey: .sendTo)) ?? .frontmost
     }
 }

@@ -69,7 +69,7 @@ struct CommandDeckView: View {
 
     private func keycap(_ s: SlotInfo) -> some View {
         let shortcut: String = {
-            if s.slot.mode == .keystroke { return s.slot.shortcut?.display ?? "—" }
+            if s.slot.mode == .keystroke { return s.slot.keySequence?.display ?? "—" }
             return "↗ " + (s.slot.appName ?? "").uppercased()
         }()
         return ZStack(alignment: .topLeading) {

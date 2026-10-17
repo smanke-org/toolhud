@@ -27,11 +27,27 @@ final class LensDirectory {
 
     func app(_ bundleID: String) -> LensApp? { apps.first { $0.id == bundleID } }
 
+    /// A Debug build can pretend a lens app isn't installed, to show how Settings handles it.
+    private static func debugMissing(_ id: String) -> Bool {
+        #if DEBUG
+        return id == DebugHooks.missingApp
+        #else
+        return false
+        #endif
+    }
+
+    /// The app's page on the developer's site, where it can be downloaded.
+    static func webPage(for app: LensApp) -> URL {
+        let slug = app.name.lowercased().replacingOccurrences(of: " ", with: "-")
+        return URL(string: "https://stevemanke.com/\(slug)/") ?? URL(string: "https://stevemanke.com/")!
+    }
+
     /// Looks again, for when an app was installed or updated while ToolHUD was running.
     func refresh() {
         var found: [String: Installed] = [:]
         var all = LensCatalog.builtIn
         for known in LensCatalog.builtIn {
+            if Self.debugMissing(known.id) { continue }
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: known.id),
                let entry = Self.read(url, bundleID: known.id) {
                 found[known.id] = entry
@@ -43,7 +59,7 @@ final class LensDirectory {
         let bundles = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         for url in bundles where url.pathExtension == "app" {
             guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier, id.hasPrefix("com.smanke."),
-                  id != Bundle.main.bundleIdentifier, found[id] == nil,
+                  id != Bundle.main.bundleIdentifier, found[id] == nil, !Self.debugMissing(id),
                   bundle.object(forInfoDictionaryKey: LensCatalog.infoPlistKey) != nil,
                   let entry = Self.read(url, bundleID: id) else { continue }
             found[id] = entry

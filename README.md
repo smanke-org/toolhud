@@ -42,9 +42,13 @@ app's color) and one of two actions, chosen per button:
 - **Lens action**: asks one of our apps to run a feature directly, through its URL scheme
   (`textlens://capture`, `pastelens://quickpaste`). It keeps working if you change that app's
   shortcuts. ToolHUD lists the installed lens apps and their features by name. Until an app
-  supports lens actions, ToolHUD presses the feature's default shortcut instead.
+  supports lens actions, ToolHUD presses the feature's default shortcut instead. An app that
+  isn't installed links to its page on stevemanke.com.
 - **Keystroke**: presses any key combination, either in the app you were using (the HUD never
-  takes focus) or in an app you choose, which ToolHUD brings forward first.
+  takes focus) or in an app you choose, which ToolHUD brings forward first. Turn on the
+  modifiers to hold (⌘ ⌥ ⌃ ⇧) and type the key, or several keys to press one after another
+  with the same modifiers (⌘K then ⌘S). Return, Tab, the arrows, F-keys and the like are in
+  the Special Keys menu.
 
 Rings can be exported to a `.toolhudring` file and imported again, to keep or to share.
 

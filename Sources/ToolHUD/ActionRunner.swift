@@ -100,18 +100,18 @@ enum ActionRunner {
     // MARK: - Keystrokes
 
     private static func runKeystroke(_ slot: Slot) {
-        guard let shortcut = slot.shortcut else {
+        guard let keys = slot.keySequence, !keys.keys.isEmpty else {
             Toast.show("\(slot.name) has no keystroke yet. Set one in ToolHUD Settings › Buttons.", symbol: "exclamationmark.triangle")
             return
         }
         switch slot.sendTo {
         case .frontmost:
-            post(shortcut)
+            post(keys)
         case .app(let bundleID, let name):
             if let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
                 running.activate()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    MainActor.assumeIsolated { post(shortcut) }
+                    MainActor.assumeIsolated { post(keys) }
                 }
             } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
                 let configuration = NSWorkspace.OpenConfiguration()
@@ -122,7 +122,7 @@ enum ActionRunner {
                             if let error {
                                 Toast.show("\(name) didn't open: \(error.localizedDescription)", symbol: "exclamationmark.triangle")
                             } else {
-                                post(shortcut)
+                                post(keys)
                             }
                         }
                     }
@@ -133,9 +133,12 @@ enum ActionRunner {
         }
     }
 
-    /// Presses the keys, as if typed. Needs Accessibility: without it macOS drops the events
-    /// silently, so ask rather than appear to do nothing.
-    static func post(_ shortcut: Shortcut) {
+    static func post(_ shortcut: Shortcut) { post(KeySequence(shortcut)) }
+
+    /// Presses the keys in turn, each with the sequence's modifiers held, as if typed.
+    /// Needs Accessibility: without it macOS drops the events silently, so ask rather than
+    /// appear to do nothing.
+    static func post(_ sequence: KeySequence) {
         guard AccessibilityTrust.shared.isTrusted else {
             AccessibilityTrust.shared.request()
             Toast.show("ToolHUD needs Accessibility access to press keys. Turn it on in System Settings › Privacy & Security.",
@@ -143,13 +146,19 @@ enum ActionRunner {
             return
         }
         let source = CGEventSource(stateID: .hidSystemState)
-        let flags = shortcut.cgFlags
-        for keyDown in [true, false] {
-            guard let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(shortcut.keyCode), keyDown: keyDown) else { continue }
-            event.flags = flags
-            event.setIntegerValueField(.eventSourceUserData, value: eventMarker)
-            // The HID level, so other apps' global shortcuts (our lens apps' included) see it.
-            event.post(tap: .cghidEventTap)
+        for (i, press) in sequence.keys.enumerated() {
+            var modifiers = sequence.modifiers
+            if press.shift { modifiers.insert(.shift) }
+            let flags = Shortcut(keyCode: press.keyCode, modifiers: modifiers, key: press.key).cgFlags
+            // A short gap between keys, so apps that read a chord (⌘K, then ⌘S) see two presses.
+            if i > 0 { usleep(15_000) }
+            for keyDown in [true, false] {
+                guard let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(press.keyCode), keyDown: keyDown) else { continue }
+                event.flags = flags
+                event.setIntegerValueField(.eventSourceUserData, value: eventMarker)
+                // The HID level, so other apps' global shortcuts (our lens apps' included) see it.
+                event.post(tap: .cghidEventTap)
+            }
         }
     }
 }

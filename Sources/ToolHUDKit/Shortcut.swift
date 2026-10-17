@@ -52,6 +52,98 @@ public struct Shortcut: Codable, Hashable, Sendable {
     public static let defaultHUD = controlOptionCommand(KeyCode.space, "Space")
 }
 
+/// One key in a keystroke button's sequence.
+public struct KeyPress: Codable, Hashable, Sendable {
+    /// A macOS virtual key code (kVK_…).
+    public var keyCode: UInt16
+    /// How the key reads: "K", "↩", "F5".
+    public var key: String
+    /// Shift is held for this key alone, because the character typed needs it ("?" is ⇧/).
+    public var shift: Bool
+
+    public init(keyCode: UInt16, key: String, shift: Bool = false) {
+        self.keyCode = keyCode
+        self.key = key
+        self.shift = shift
+    }
+}
+
+/// What a keystroke button presses: each key in turn, with the same modifiers held for
+/// every one of them.
+public struct KeySequence: Codable, Hashable, Sendable {
+    public var modifiers: KeyModifiers
+    public var keys: [KeyPress]
+    /// The keys as typed in Settings, so the field shows them again.
+    public var text: String
+
+    public init(modifiers: KeyModifiers, keys: [KeyPress], text: String) {
+        self.modifiers = modifiers
+        self.keys = keys
+        self.text = text
+    }
+
+    /// A single shortcut, as buttons stored them before sequences.
+    public init(_ shortcut: Shortcut) {
+        self.init(modifiers: shortcut.modifiers, keys: [KeyPress(keyCode: shortcut.keyCode, key: shortcut.key)],
+                  text: KeySequence.token(for: shortcut.key))
+    }
+
+    /// "⌘K ⌘S": each key with the modifiers it's pressed with.
+    public var display: String {
+        keys.map { press in
+            var mods = modifiers
+            if press.shift { mods.insert(.shift) }
+            return mods.symbols + press.key
+        }.joined(separator: " ")
+    }
+
+    /// The first key with its modifiers, to compare with a single shortcut.
+    public var first: Shortcut? {
+        keys.first.map { Shortcut(keyCode: $0.keyCode, modifiers: $0.shift ? modifiers.union(.shift) : modifiers, key: $0.key) }
+    }
+
+    /// How a key name is written in the field: itself for one character, in brackets
+    /// otherwise ("[F5]").
+    public static func token(for key: String) -> String {
+        key.count == 1 ? key : "[\(key)]"
+    }
+
+    /// Turns the field's text into keys. `lookup` finds the key that types a character on
+    /// the current keyboard layout, and whether Shift is needed. Letters are the keys
+    /// themselves, so "K" is the K key without Shift, as in a menu shortcut. Keys that
+    /// can't be typed in a field are written as their symbols (↩ ⇥ ⎋ ⌫ ⌦ ← → ↑ ↓) or in
+    /// brackets ("[F5]", "[Space]"). Returns the characters no key types.
+    public static func parse(_ text: String, modifiers: KeyModifiers,
+                             lookup: (Character) -> (keyCode: UInt16, shift: Bool)?) -> (sequence: KeySequence, unknown: [String]) {
+        var keys: [KeyPress] = []
+        var unknown: [String] = []
+        var rest = Substring(text)
+        while let c = rest.first {
+            if c == "[", let close = rest.firstIndex(of: "]") {
+                let name = String(rest[rest.index(after: rest.startIndex)..<close])
+                if let code = KeyNames.code(named: name) {
+                    keys.append(KeyPress(keyCode: code, key: KeyNames.label(of: code) ?? name))
+                } else {
+                    unknown.append("[\(name)]")
+                }
+                rest = rest[rest.index(after: close)...]
+                continue
+            }
+            rest = rest.dropFirst()
+            if let code = KeyNames.code(named: String(c)) {
+                keys.append(KeyPress(keyCode: code, key: KeyNames.label(of: code) ?? String(c)))
+            } else if c.isLetter, let found = lookup(Character(c.lowercased())) {
+                keys.append(KeyPress(keyCode: found.keyCode, key: c.uppercased()))
+            } else if let found = lookup(c) {
+                keys.append(KeyPress(keyCode: found.keyCode, key: c == " " ? "Space" : String(c), shift: found.shift))
+            } else {
+                unknown.append(String(c))
+            }
+        }
+        return (KeySequence(modifiers: modifiers, keys: keys, text: text), unknown)
+    }
+}
+
 /// The virtual key codes this package refers to by name.
 public enum KeyCode {
     public static let a: UInt16 = 0, s: UInt16 = 1, d: UInt16 = 2, h: UInt16 = 4, c: UInt16 = 8, v: UInt16 = 9
@@ -80,6 +172,31 @@ public enum KeyNames {
         KeyCode.left: "←", KeyCode.right: "→", KeyCode.down: "↓", KeyCode.up: "↑",
         115: "↖", 119: "↘", 116: "⇞", 121: "⇟",
     ]
+
+    /// Keys a keystroke button can press that can't be typed into a text field, as the
+    /// Special Keys menu offers them.
+    public static let insertable: [(title: String, token: String)] = [
+        ("Return", "↩"), ("Tab", "⇥"), ("Space", "[Space]"), ("Escape", "⎋"), ("Delete", "⌫"),
+        ("Forward Delete", "⌦"), ("Left Arrow", "←"), ("Right Arrow", "→"), ("Up Arrow", "↑"),
+        ("Down Arrow", "↓"), ("Home", "↖"), ("End", "↘"), ("Page Up", "⇞"), ("Page Down", "⇟"),
+    ] + (1...12).map { ("F\($0)", "[F\($0)]") }
+
+    /// The key code for a special key's symbol or name: "↩", "F5", "Space", "Return".
+    public static func code(named name: String) -> UInt16? {
+        if let hit = special.first(where: { $0.value == name }) { return hit.key }
+        if let hit = fKeys.first(where: { "F\($0.value)" == name.uppercased() }) { return hit.key }
+        if let token = insertable.first(where: { $0.title.caseInsensitiveCompare(name) == .orderedSame })?.token,
+           token.count == 1 {
+            return code(named: token)
+        }
+        return nil
+    }
+
+    /// The label a special key reads as, or nil for an ordinary character key.
+    public static func label(of keyCode: UInt16) -> String? {
+        if let f = fKeys[keyCode] { return "F\(f)" }
+        return special[keyCode]
+    }
 
     /// The label for a key, given the characters it typed without modifiers.
     public static func name(keyCode: UInt16, characters: String?) -> String {
