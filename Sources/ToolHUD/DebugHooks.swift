@@ -6,6 +6,7 @@ import ToolHUDKit
 /// app's preferences, so these hooks only show things and never sync, update or save.
 ///
 ///   TOOLHUD_DEBUG_HUD=halo:0           opens that look with button 0 lit
+///                                      (TOOLHUD_DEBUG_DELAY=<seconds> waits first, so another app can come forward)
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_BUTTON=<index>         starts Settings › Buttons on that button
@@ -46,7 +47,8 @@ enum DebugHooks {
             let parts = spec.split(separator: ":")
             guard let look = parts.first.flatMap({ Visualization(rawValue: String($0)) }) else { return false }
             let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            let delay = Double(env["TOOLHUD_DEBUG_DELAY"] ?? "") ?? 1
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 MainActor.assumeIsolated { HUDController.shared.debugShow(look, highlight: index) }
             }
             return true

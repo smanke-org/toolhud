@@ -115,6 +115,9 @@ final class HUDController {
     private var closing = false
     private var ticker: Timer?
     private var outsideMonitor: Any?
+    /// Catches the HUD's keys while it's open; see `installKeyTap`.
+    fileprivate var keyTap: CFMachPort?
+    private var keyTapSource: CFRunLoopSource?
     private var lastScroll = Date.distantPast
 
     private static let tick = 1.0 / 60
@@ -204,6 +207,7 @@ final class HUDController {
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in
             MainActor.assumeIsolated { HUDController.shared.dismiss() }
         }
+        installKeyTap()
         step()
     }
 
@@ -215,10 +219,54 @@ final class HUDController {
         ticker = nil
         if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor) }
         outsideMonitor = nil
+        removeKeyTap()
         panel?.orderOut(nil)
         model.highlighted = nil
         model.fired = nil
         model.gearHovered = false
+    }
+
+    /// The keys the HUD answers to. Others pass through to the app in front.
+    nonisolated static let hudKeys: Set<UInt16> = Set(KeyCode.digits).union([
+        KeyCode.escape, KeyCode.returnKey, KeyCode.keypadEnter, KeyCode.space, KeyCode.tab, KeyCode.comma,
+        KeyCode.left, KeyCode.right, KeyCode.up, KeyCode.down,
+    ])
+
+    /// While the HUD is open over another app, AppKit calls the panel the key window but
+    /// the window server keeps sending keys to the app in front, which never sees them
+    /// either (macOS 27), so Esc and the number keys did nothing. An event tap takes the
+    /// HUD's own keys first, whichever window has focus. It needs Accessibility; without
+    /// it the panel's own keyDown is the fallback.
+    private func installKeyTap() {
+        guard keyTap == nil, AccessibilityTrust.shared.isTrusted else { return }
+        let mask = CGEventMask(1) << CGEventMask(CGEventType.keyDown.rawValue)
+        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
+                                          eventsOfInterest: mask, callback: hudKeyTapCallback, userInfo: nil) else { return }
+        let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        keyTap = tap
+        keyTapSource = source
+    }
+
+    private func removeKeyTap() {
+        if let keyTap {
+            CGEvent.tapEnable(tap: keyTap, enable: false)
+            CFMachPortInvalidate(keyTap)
+        }
+        if let keyTapSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), keyTapSource, .commonModes) }
+        keyTap = nil
+        keyTapSource = nil
+    }
+
+    /// From the key tap: whether the HUD used the key.
+    fileprivate func tappedKey(_ event: NSEvent) -> Bool {
+        guard isShowing, !closing, Self.hudKeys.contains(event.keyCode) else { return false }
+        // Keys with ⌘ ⌥ ⌃ belong to someone else (the HUD's own shortcut among them);
+        // Shift is allowed for Shift-Tab.
+        guard event.modifierFlags.intersection([.command, .option, .control]).isEmpty else { return false }
+        key(event)
+        return true
     }
 
     private func makePanel() -> HUDPanel {
@@ -366,4 +414,19 @@ final class HUDController {
             }
         }
     }
+}
+
+private func hudKeyTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent,
+                               refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        MainActor.assumeIsolated { if let tap = HUDController.shared.keyTap { CGEvent.tapEnable(tap: tap, enable: true) } }
+        return Unmanaged.passUnretained(event)
+    }
+    // Keystrokes ToolHUD itself posts (a button's keys) go on to the app.
+    guard type == .keyDown, event.getIntegerValueField(.eventSourceUserData) != ActionRunner.eventMarker,
+          let key = NSEvent(cgEvent: event) else { return Unmanaged.passUnretained(event) }
+    // The tap's run loop source is on the main run loop, so this is the main thread.
+    nonisolated(unsafe) let mainKey = key
+    let used = MainActor.assumeIsolated { HUDController.shared.tappedKey(mainKey) }
+    return used ? nil : Unmanaged.passUnretained(event)
 }
