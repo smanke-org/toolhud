@@ -167,6 +167,7 @@ final class HUDController {
         let mouse = NSEvent.mouseLocation
         guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main else { return }
         let side = HUDLayout.canvas * scale
+        let frameSide = side + HUDRootView.shadowMargin * 2
         let visible = screen.visibleFrame
         let wanted = prefs.anchor == .pointer && !forceCenter ? mouse : CGPoint(x: visible.midX, y: visible.midY)
         // Kept far enough from the edges that every button is on screen.
@@ -179,7 +180,7 @@ final class HUDController {
 
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        panel.setFrame(NSRect(x: center.x - side / 2, y: center.y - side / 2, width: side, height: side), display: false)
+        panel.setFrame(NSRect(x: center.x - frameSide / 2, y: center.y - frameSide / 2, width: frameSide, height: frameSide), display: false)
         panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
 

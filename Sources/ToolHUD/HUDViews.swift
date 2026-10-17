@@ -2,9 +2,12 @@ import AppKit
 import SwiftUI
 import ToolHUDKit
 
-/// The HUD as drawn in its panel or as a preview in Settings.
+/// The HUD as drawn in its panel, with a dark shadow so it stands out on a busy desktop.
 struct HUDRootView: View {
     let model: HUDModel
+
+    /// Room around the drawing for the shadow, which reaches about 100 points out.
+    static let shadowMargin = 110.0
 
     var body: some View {
         let side = HUDLayout.canvas
@@ -12,6 +15,12 @@ struct HUDRootView: View {
             .frame(width: side, height: side)
             .scaleEffect(model.scale)
             .frame(width: side * model.scale, height: side * model.scale)
+            // A tight contact shadow under a wide soft one, the same size at every Size
+            // setting. Drawn from the composited HUD so overlapping pieces cast one shadow.
+            .compositingGroup()
+            .shadow(color: .black.opacity(1.0), radius: 6)
+            .shadow(color: .black.opacity(0.8), radius: 50)
+            .frame(width: side * model.scale + Self.shadowMargin * 2, height: side * model.scale + Self.shadowMargin * 2)
     }
 }
 
