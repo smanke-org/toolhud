@@ -32,24 +32,16 @@ public enum Visualization: String, Codable, CaseIterable, Sendable, Identifiable
 
     public var blurb: String {
         switch self {
-        case .halo: "Translucent slices; the one you point at lifts and glows."
+        case .halo: "Translucent slices; the one under the pointer lifts and glows."
         case .orbit: "Round buttons that spring out from the pointer."
-        case .dial: "A rotary bezel that turns to what you point at, or as you scroll."
+        case .dial: "A rotary bezel that turns as you scroll or use the arrow keys."
         case .stargate: "The chevrons are the buttons; the gate opens when one locks."
         case .commandDeck: "A panel of keycaps with app-colored lights."
         case .hive: "Honeycomb cells packed around a center hex."
         case .redAlert: "Crimson blades with hazard stripes on the armed one."
         case .constellation: "Star buttons joined by lines that draw themselves in."
         case .glassPills: "Labeled pills, the easiest to read at a glance."
-        case .planetary: "Planets drift around a sun and stop the moment you aim."
-        }
-    }
-
-    /// How the pointer picks a button.
-    public var selection: HUDLayout.Selection {
-        switch self {
-        case .commandDeck, .hive, .planetary: .nearest
-        default: .angular
+        case .planetary: "Planets drift around a sun and hold still when you reach for one."
         }
     }
 
@@ -92,7 +84,8 @@ public enum HUDAnchor: String, Codable, CaseIterable, Sendable {
 
 /// How the keyboard shortcut behaves.
 public enum HotKeyMode: String, Codable, CaseIterable, Sendable {
-    /// Hold the keys, point, let go to run. A quick tap leaves the HUD open to click in.
+    /// No longer offered: buttons run only when clicked, so letting go of the keys does
+    /// nothing in either mode. Kept so stored settings and synced rings still read.
     case hold
     /// Press once to open, again (or Esc) to close.
     case toggle

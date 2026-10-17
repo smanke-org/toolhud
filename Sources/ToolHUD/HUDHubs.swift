@@ -148,7 +148,7 @@ struct HiveView: View {
             SettingsGear(model: model, size: 9, tint: Self.honey, litGlyph: Color(hex: "#14100A"))
             VStack(spacing: 4) {
                 Text(model.readout.title).font(.system(size: 17, weight: .bold)).foregroundStyle(Color(hex: "#FFF7E6"))
-                Text(model.focusSlot == nil && !model.gearHovered ? "Point at a cell or press its number" : model.readout.detail)
+                Text(model.focusSlot == nil && !model.gearHovered ? "Click a cell or press its number" : model.readout.detail)
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(model.focusSlot?.tint.color ?? Self.honey.opacity(0.6))
             }

@@ -15,6 +15,9 @@ final class HUDModel {
     var fired: Int?
     /// The pointer is on the Settings gear.
     var gearHovered = false
+    /// Each Glass Pill's width as drawn, for hit testing. Not observed: it changes nothing on
+    /// screen.
+    @ObservationIgnored var pillWidths: [Int: Double] = [:]
     /// Seconds since the HUD opened (the opening animations run on it), and when it fired.
     var time = 0.0
     var firedAt = 0.0
@@ -135,20 +138,15 @@ final class HUDController {
         if isShowing { dismiss() } else { show() }
     }
 
-    private func hotKeyReleased() {
-        if Preferences.shared.hotKeyMode == .hold { triggerReleased() }
-    }
+    private func hotKeyReleased() { triggerReleased() }
 
     private func mouseOpened() {
         if isShowing { dismiss() } else { show() }
     }
 
-    /// Letting go of the shortcut or mouse button runs the button pointed at, if the pointer
-    /// moved to choose one. A tap without moving leaves the HUD open to click in.
-    private func triggerReleased() {
-        guard isShowing, !closing, pointerMoved, let index = model.highlighted else { return }
-        fire(index)
-    }
+    /// Letting go of the shortcut or mouse button leaves the HUD open: buttons run only when
+    /// clicked or picked with the keyboard.
+    private func triggerReleased() {}
 
     // MARK: - Showing
 
@@ -221,6 +219,16 @@ final class HUDController {
         outsideMonitor = nil
         removeKeyTap()
         panel?.orderOut(nil)
+        // Hidden in the middle of its own click, the panel can stay on screen though AppKit
+        // reports it hidden (macOS 27); the window server seems to hold it until the mouse
+        // button comes up. Hide it again once the click is surely over.
+        for delay in [0.05, 0.3] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                MainActor.assumeIsolated {
+                    if !HUDController.shared.isShowing { HUDController.shared.panel?.orderOut(nil) }
+                }
+            }
+        }
         model.highlighted = nil
         model.fired = nil
         model.gearHovered = false
@@ -301,8 +309,7 @@ final class HUDController {
         }
         let onGear = HUDLayout.pointsAtGear(local, in: model.visualization, count: model.slots.count)
         if onGear != model.gearHovered { model.gearHovered = onGear }
-        let chosen = onGear ? nil : HUDLayout.selection(at: local, centers: model.centers, style: model.visualization.selection)
-        setHighlight(chosen)
+        setHighlight(onGear ? nil : button(at: local))
     }
 
     #if DEBUG
@@ -319,6 +326,21 @@ final class HUDController {
             // In CG coordinates (top-left origin), for a test click.
             let x = center.x + gear.x * scale, y = screen.frame.maxY - (center.y - gear.y * scale)
             DebugHooks.trace("gear at \(Int(x)) \(Int(y))")
+            // Button 2's drawn center and an empty spot above everything, for test clicks.
+            let n = model.slots.count
+            let targets: [HUDPoint] = {
+                switch visualization {
+                case .commandDeck: return HUDLayout.deck(n).map { HUDPoint($0.x, $0.y + 3) }
+                case .glassPills:
+                    return HUDLayout.centers(for: .glassPills, count: n).enumerated().map {
+                        HUDLayout.pillFrame($0.offset, count: n, anchor: $0.element, width: model.pillWidths[$0.offset] ?? 150).center
+                    }
+                default: return HUDLayout.centers(for: visualization, count: n, phase: model.phase)
+                }
+            }()
+            for (label, p) in [("button", targets[min(1, n - 1)]), ("empty", HUDPoint(0, -285))] {
+                DebugHooks.trace("\(label) at \(Int(center.x + p.x * scale)) \(Int(screen.frame.maxY - (center.y - p.y * scale)))")
+            }
         }
     }
     #endif
@@ -326,8 +348,7 @@ final class HUDController {
     private func setHighlight(_ index: Int?) {
         guard index != model.highlighted else { return }
         model.highlighted = index
-        guard let index else { return }
-        if model.visualization == .dial { model.turnDial(to: index) }
+        guard index != nil else { return }
         if Preferences.shared.haptics {
             NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
         }
@@ -335,9 +356,32 @@ final class HUDController {
 
     // MARK: - Choosing
 
+    /// The button drawn under this point, if any.
+    private func button(at local: HUDPoint) -> Int? {
+        let n = max(model.slots.count, 1)
+        return HUDLayout.button(at: local, in: model.visualization, count: model.slots.count,
+                                dialTurn: Double(model.dialIndex) * 360 / Double(n), phase: model.phase,
+                                pillWidths: model.pillWidths)
+    }
+
+    /// Where the pointer is, in the HUD's own coordinates.
+    private var pointerInHUD: HUDPoint {
+        let mouse = NSEvent.mouseLocation
+        return HUDPoint(Double(mouse.x - center.x) / scale, -Double(mouse.y - center.y) / scale)
+    }
+
+    /// A click runs the button it lands on, opens Settings on the gear, and closes the HUD
+    /// anywhere else, even if the keyboard has lit a button.
     func click() {
         guard isShowing, !closing else { return }
-        if model.gearHovered { openSettings() } else if let index = model.highlighted { fire(index) } else { dismiss() }
+        let local = pointerInHUD
+        if HUDLayout.pointsAtGear(local, in: model.visualization, count: model.slots.count) {
+            openSettings()
+        } else if let index = button(at: local) {
+            fire(index)
+        } else {
+            dismiss()
+        }
     }
 
     /// Closes the HUD and opens Settings, from the gear or the comma key.
@@ -365,7 +409,9 @@ final class HUDController {
         let current = model.highlighted ?? (by > 0 ? -1 : 0)
         keyboardPointer = NSEvent.mouseLocation
         model.gearHovered = false
-        setHighlight(((current + by) % n + n) % n)
+        let next = ((current + by) % n + n) % n
+        setHighlight(next)
+        if model.visualization == .dial { model.turnDial(to: next) }
     }
 
     func key(_ event: NSEvent) {

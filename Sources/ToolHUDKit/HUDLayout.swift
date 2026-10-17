@@ -17,15 +17,9 @@ public struct HUDPoint: Hashable, Sendable {
 /// and scaled for the Size setting.
 public enum HUDLayout {
     public static let canvas = 600.0
-    /// Pointing inside this radius chooses nothing (and clicking there closes the HUD).
-    public static let deadZone = 44.0
-
-    public enum Selection: Sendable {
-        /// By direction from the center, as in a marking menu: aim, don't hunt.
-        case angular
-        /// The closest button, within reach.
-        case nearest
-    }
+    /// How far outside a button's drawn shape a click still counts, so a near miss with a
+    /// trackpad isn't lost.
+    public static let hitMargin = 8.0
 
     // MARK: - Angles
 
@@ -54,23 +48,105 @@ public enum HUDLayout {
         return HUDPoint(radius * sin(r), -radius * cos(r))
     }
 
-    // MARK: - Selection
+    // MARK: - Hit testing
 
-    /// The button the pointer chooses: for `.angular`, nil inside the dead zone; for
-    /// `.nearest` (whose grids can have a button at the very center), nil away from every
-    /// button.
-    public static func selection(at pointer: HUDPoint, centers: [HUDPoint], style: Selection,
-                                 reach: Double = 72) -> Int? {
-        guard !centers.isEmpty else { return nil }
-        switch style {
-        case .angular:
-            guard pointer.length > deadZone else { return nil }
-            return index(forBearing: bearing(of: pointer), count: centers.count)
-        case .nearest:
-            let best = centers.enumerated().min { $0.element.distance(to: pointer) < $1.element.distance(to: pointer) }
-            guard let best, best.element.distance(to: pointer) <= reach else { return nil }
-            return best.offset
+    /// The button whose drawn shape (plus `margin`) is under the pointer, or nil. Buttons
+    /// are chosen only by pointing right at them, never by direction. Where two shapes'
+    /// margins overlap, the nearer button wins.
+    ///
+    /// - Parameters:
+    ///   - dialTurn: degrees the Dial's bezel has turned (counterclockwise).
+    ///   - phase: the Planetary orbits' phase.
+    ///   - pillWidths: each Glass Pill's measured width; a typical width is assumed for
+    ///     any not measured yet.
+    public static func button(at pointer: HUDPoint, in visualization: Visualization, count: Int,
+                              margin: Double = hitMargin, dialTurn: Double = 0, phase: Double = 0,
+                              pillWidths: [Int: Double] = [:]) -> Int? {
+        let n = max(count, 0)
+        guard n > 0 else { return nil }
+        let step = 360 / Double(n)
+        let r = pointer.length
+        let bearing = bearing(of: pointer)
+
+        /// Inside the annulus `inner...outer` and within this button's slice of angle.
+        func inSlice(_ i: Int, inner: Double, outer: Double, inset: Double) -> Bool {
+            guard r >= inner - margin, r <= outer + margin else { return false }
+            var delta = abs(bearing - angle(of: i, count: n)).truncatingRemainder(dividingBy: 360)
+            if delta > 180 { delta = 360 - delta }
+            // The margin as an angle at this radius, so the gap between slices still counts.
+            let slack = margin / max(r, 1) * 180 / .pi
+            return delta <= step / 2 - inset + slack
         }
+        func inCircle(_ c: HUDPoint, _ radius: Double) -> Bool { pointer.distance(to: c) <= radius + margin }
+        func inRect(_ c: HUDPoint, _ w: Double, _ h: Double) -> Bool {
+            abs(pointer.x - c.x) <= w / 2 + margin && abs(pointer.y - c.y) <= h / 2 + margin
+        }
+        /// A pointy-topped hexagon `w` wide and `h` tall.
+        func inHex(_ c: HUDPoint, _ w: Double, _ h: Double) -> Bool {
+            let w = w + margin * 2, h = h + margin * 2
+            let dx = abs(pointer.x - c.x), dy = abs(pointer.y - c.y)
+            return dx <= w / 2 && dy <= h / 2 - (h / 4) * (dx / (w / 2))
+        }
+
+        var hits: [(index: Int, distance: Double)] = []
+        func add(_ i: Int, _ hit: Bool, _ center: HUDPoint) {
+            if hit { hits.append((i, pointer.distance(to: center))) }
+        }
+        switch visualization {
+        case .halo:
+            for i in 0..<n { add(i, inSlice(i, inner: 97, outer: 201, inset: 1.1), polar(146, angle(of: i, count: n))) }
+        case .redAlert:
+            for i in 0..<n { add(i, inSlice(i, inner: 125, outer: 213, inset: 2.2), polar(170, angle(of: i, count: n))) }
+        case .orbit:
+            // The name under each button counts as part of it.
+            for (i, c) in centers(for: .orbit, count: n).enumerated() {
+                add(i, inCircle(c, 32) || inRect(HUDPoint(c.x, c.y + 44), 90, 16), c)
+            }
+        case .constellation:
+            for (i, c) in centers(for: .constellation, count: n).enumerated() {
+                let label = HUDPoint(c.x, c.y + (c.y > 1 ? 38 : -38))
+                add(i, inCircle(c, 25) || inRect(label, 90, 16), c)
+            }
+        case .planetary:
+            for p in planets(n, phase: phase) {
+                let label = HUDPoint(p.center.x, p.center.y + p.size / 2 + 12)
+                add(p.index, inCircle(p.center, p.size / 2) || inRect(label, 90, 16), p.center)
+            }
+        case .dial:
+            for i in 0..<n {
+                let c = polar(160, angle(of: i, count: n) - dialTurn)
+                add(i, inCircle(c, 38), c)
+            }
+        case .stargate:
+            for i in 0..<n {
+                let a = angle(of: i, count: n)
+                let chevron = polar(170, a), glyph = polar(222, a)
+                add(i, inCircle(chevron, 30) || inCircle(glyph, 18), glyph)
+            }
+        case .commandDeck:
+            for (i, c) in deck(n).enumerated() {
+                let key = HUDPoint(c.x, c.y + 3)
+                add(i, inRect(key, keySize.width, keySize.height), key)
+            }
+        case .hive:
+            for (i, c) in hive(n).enumerated() { add(i, inHex(c, hexCell.width - 6, hexCell.height - 6), c) }
+        case .glassPills:
+            for (i, c) in centers(for: .glassPills, count: n).enumerated() {
+                let pill = pillFrame(i, count: n, anchor: c, width: pillWidths[i] ?? 150)
+                add(i, inRect(pill.center, pill.width, 42), pill.center)
+            }
+        }
+        return hits.min { $0.distance < $1.distance }?.index
+    }
+
+    /// Where a Glass Pill sits: centered on its point at the top and bottom, and growing
+    /// outward from it on the sides, as the view lays it out.
+    public static func pillFrame(_ index: Int, count: Int, anchor: HUDPoint, width: Double) -> (center: HUDPoint, width: Double) {
+        let side = sin(angle(of: index, count: count) * .pi / 180)
+        if abs(side) < 0.25 { return (anchor, width) }
+        // The view puts the pill's inner end 22 pt past its point, toward the center.
+        let inner = side > 0 ? anchor.x - 22 : anchor.x + 22
+        return (HUDPoint(side > 0 ? inner + width / 2 : inner - width / 2, anchor.y), width)
     }
 
     // MARK: - Settings gear

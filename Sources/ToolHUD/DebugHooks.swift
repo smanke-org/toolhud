@@ -9,6 +9,7 @@ import ToolHUDKit
 ///                                      (TOOLHUD_DEBUG_DELAY=<seconds> waits first, so another app can come forward)
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
+///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
 ///   TOOLHUD_DEBUG_BUTTON=<index>         starts Settings › Buttons on that button
 ///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
 ///                                      presses those keys, only if that app is in front

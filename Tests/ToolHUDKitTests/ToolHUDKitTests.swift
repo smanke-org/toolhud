@@ -148,24 +148,51 @@ import Testing
     #expect(HUDLayout.index(forBearing: 359.999, count: 3) == 0)
 }
 
-@Test func angularSelectionIgnoresTheDeadZone() {
-    let centers = HUDLayout.centers(for: .halo, count: 4)
-    #expect(HUDLayout.selection(at: HUDPoint(0, -20), centers: centers, style: .angular) == nil)
-    #expect(HUDLayout.selection(at: HUDPoint(0, -200), centers: centers, style: .angular) == 0)
-    #expect(HUDLayout.selection(at: HUDPoint(500, 10), centers: centers, style: .angular) == 1)
-}
-
-@Test func everyButtonIsSelectableAtItsOwnCenter() {
+@Test func everyButtonIsHitAtItsOwnCenter() {
     for viz in Visualization.allCases {
         for count in DefaultRing.minCount...DefaultRing.maxCount {
-            let centers = HUDLayout.centers(for: viz, count: count, phase: 37)
+            let centers = viz == .commandDeck ? HUDLayout.deck(count).map { HUDPoint($0.x, $0.y + 3) }
+                                              : HUDLayout.centers(for: viz, count: count, phase: 37)
             #expect(centers.count == count)
             for (i, center) in centers.enumerated() {
-                #expect(HUDLayout.selection(at: center, centers: centers, style: viz.selection) == i,
-                        "\(viz) \(count) #\(i)")
+                #expect(HUDLayout.button(at: center, in: viz, count: count, phase: 37) == i, "\(viz) \(count) #\(i)")
             }
         }
     }
+}
+
+@Test func pointingInADirectionNoLongerChoosesAButton() {
+    // Halo used to pick by direction: anywhere above the center chose the top slice.
+    #expect(HUDLayout.button(at: HUDPoint(0, -60), in: .halo, count: 8) == nil, "the hub")
+    #expect(HUDLayout.button(at: HUDPoint(0, -260), in: .halo, count: 8) == nil, "past the ring")
+    #expect(HUDLayout.button(at: HUDPoint(0, -150), in: .halo, count: 8) == 0, "on the slice")
+    // Orbit: between two buttons is nothing.
+    let orbit = HUDLayout.centers(for: .orbit, count: 8)
+    let between = HUDPoint((orbit[0].x + orbit[1].x) / 2, (orbit[0].y + orbit[1].y) / 2)
+    #expect(HUDLayout.button(at: between, in: .orbit, count: 8) == nil)
+}
+
+@Test func theMarginForgivesANearMissButNoMore() {
+    let c = HUDLayout.centers(for: .orbit, count: 8)[2]   // straight right, radius 167
+    #expect(HUDLayout.button(at: HUDPoint(c.x + 32 + 7, c.y), in: .orbit, count: 8) == 2)
+    #expect(HUDLayout.button(at: HUDPoint(c.x + 32 + 10, c.y), in: .orbit, count: 8) == nil)
+    #expect(HUDLayout.button(at: HUDPoint(c.x + 32 + 10, c.y), in: .orbit, count: 8, margin: 12) == 2)
+}
+
+@Test func theDialIsHitWhereItHasTurnedTo() {
+    let count = 8, step = 360.0 / 8
+    // Turned so button 2 is at the top.
+    let top = HUDLayout.polar(160, 0)
+    #expect(HUDLayout.button(at: top, in: .dial, count: count, dialTurn: 2 * step) == 2)
+    #expect(HUDLayout.button(at: top, in: .dial, count: count, dialTurn: 0) == 0)
+}
+
+@Test func glassPillsAreHitAcrossTheirWidth() {
+    let count = 8
+    let right = HUDLayout.centers(for: .glassPills, count: count)[2]   // a side pill, growing outward
+    let frame = HUDLayout.pillFrame(2, count: count, anchor: right, width: 180)
+    #expect(HUDLayout.button(at: HUDPoint(frame.center.x + 85, right.y), in: .glassPills, count: count, pillWidths: [2: 180]) == 2)
+    #expect(HUDLayout.button(at: HUDPoint(frame.center.x + 110, right.y), in: .glassPills, count: count, pillWidths: [2: 180]) == nil)
 }
 
 @Test func buttonsStayOnTheCanvas() {

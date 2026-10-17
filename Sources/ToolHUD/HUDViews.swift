@@ -95,7 +95,7 @@ extension HUDModel {
     var readout: (title: String, app: String, detail: String) {
         if gearHovered && fired == nil { return ("Settings", "ToolHUD", "Buttons, looks and triggers") }
         guard let slot = focusSlot else {
-            return ("ToolHUD", "Point to choose", "Esc closes · 1–\(min(slots.count, 9)) pick")
+            return ("ToolHUD", "Click a button", "Esc closes · 1–\(min(slots.count, 9)) pick")
         }
         if fired != nil { return (slot.name, slot.appName ?? "Keystroke", "Running…") }
         return (slot.name, slot.appName ?? "Keystroke", slot.summary)

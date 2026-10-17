@@ -51,6 +51,12 @@ enum ActionRunner {
     nonisolated static let eventMarker: Int64 = 0x544F_4F4C // "TOOL"
 
     static func run(_ slot: Slot) {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_DRY_RUN"] != nil {
+            DebugHooks.trace("would run \(slot.name)")
+            return
+        }
+        #endif
         switch slot.mode {
         case .lens: runLens(slot)
         case .keystroke: runKeystroke(slot)

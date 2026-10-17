@@ -145,6 +145,7 @@ struct GlassPillsView: View {
         .scaleEffect(s.on ? 1.08 : 1)
         .animation(.spring(response: 0.22, dampingFraction: 0.55), value: s.on)
         .fixedSize()
+        .onGeometryChange(for: Double.self) { $0.size.width } action: { model.pillWidths[s.index] = $0 }
     }
 }
 

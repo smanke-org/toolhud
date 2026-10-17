@@ -3,7 +3,7 @@ import ToolHUDKit
 
 // MARK: - 1 · Halo
 
-/// Translucent slices around a hub; the one you point at lifts outward and glows.
+/// Translucent slices around a hub; the one under the pointer lifts outward and glows.
 struct HaloView: View {
     let model: HUDModel
 

@@ -1,9 +1,9 @@
 # ToolHUD
 
 ToolHUD puts the features of your favorite apps one gesture away. Press a shortcut or click
-the mouse in any app, and a ring of buttons opens around the pointer. Flick toward a button
-and let go, and it runs: capture text with TextLens, turn on ClickLens's spotlight, open
-PasteLens's Quick Paste, or press any key combination in any app.
+the mouse in any app, and a ring of buttons opens around the pointer. Click a button and it
+runs: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick
+Paste, or press any key combination in any app.
 
 ## Download
 
@@ -21,18 +21,18 @@ Requires macOS 26 or later.
 
 | Gesture | What it does |
 |---|---|
-| ⌃⌥⌘Space | Open the HUD at the pointer. Hold the keys, point at a button and let go to run it, or tap the keys and click a button. |
+| ⌃⌥⌘Space | Open the HUD at the pointer, then click a button. Press the shortcut again to close it. |
 | ⌥ + right-click | Open the HUD from the mouse, in any app. |
 | 1–9, 0 | Run button 1–10 while the HUD is open. |
 | ← → ↑ ↓, Tab | Move between buttons; Return runs the lit one. |
 | Esc | Close the HUD. |
 | ⚙ or , | Open Settings. Every look has a small gear; click it, or press comma. |
 
-Buttons are chosen by direction, as in a marking menu: you don't have to hit a button, just
-move toward it. After a while the gestures become muscle memory.
+A button runs only when you click right on it (a few points' margin forgives a near miss)
+or press its number. Letting go of the shortcut or the mouse button never runs anything, so
+the HUD stays open until you choose.
 
-The shortcut, Hold or Toggle behavior and the mouse trigger can be changed in Settings ›
-Triggers. The mouse can open the HUD with ⌥ + right-click, by holding the right button (a quick
+The shortcut and the mouse trigger can be changed in Settings › Triggers. The mouse can open the HUD with ⌥ + right-click, by holding the right button (a quick
 right-click still opens the app's own menu), with the middle button, or with either side button.
 
 ## Buttons

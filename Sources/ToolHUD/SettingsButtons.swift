@@ -464,11 +464,8 @@ struct TriggersSettings: View {
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout).foregroundStyle(.orange)
                 }
-                Picker("How the shortcut works", selection: $prefs.hotKeyMode) {
-                    ForEach(HotKeyMode.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                Text(prefs.hotKeyMode.detail).font(.callout).foregroundStyle(.secondary)
+                Text("Press the shortcut to open the HUD, then click a button. Press it again, or Esc, to close the HUD.")
+                    .font(.callout).foregroundStyle(.secondary)
             } header: {
                 Text("Keyboard")
             } footer: {
@@ -494,7 +491,7 @@ struct TriggersSettings: View {
             } header: {
                 Text("Mouse")
             } footer: {
-                Text("Works in every app. Open the HUD with the mouse, move toward a button and let go to run it, or let go without moving and click one.")
+                Text("Works in every app. The HUD opens around the pointer and stays open when you let go; click a button to run it.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
