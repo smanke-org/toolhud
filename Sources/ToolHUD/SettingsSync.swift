@@ -73,7 +73,8 @@ final class SettingsSync {
 
     /// Settings that follow the user between Macs.
     static var syncedKeys: [String] {
-        Preferences.keys + ["showInDock", "showInMenuBar", UpdatePolicy.key]
+        Preferences.keys + ["showInDock", "showInMenuBar", UpdatePolicy.key,
+         UpdateInterval.valueKey, UpdateInterval.unitKey]
     }
 
     nonisolated static var folder: URL {
@@ -316,6 +317,8 @@ final class SettingsSync {
         settings["showInDock"] = AppPresence.showInDock
         settings["showInMenuBar"] = AppPresence.showInMenuBar
         settings[UpdatePolicy.key] = UpdatePolicy.current.rawValue
+        settings[UpdateInterval.valueKey] = UpdateInterval.current.value
+        settings[UpdateInterval.unitKey] = UpdateInterval.current.unit.rawValue
         let plist: [String: Any] = ["version": 1, "updatedAt": updatedAt, "updatedBy": Self.deviceName, "settings": settings]
         do {
             let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
@@ -337,6 +340,7 @@ final class SettingsSync {
         }
         Preferences.shared.reload()
         AutoUpdater.shared.policy = UpdatePolicy.current
+        AutoUpdater.shared.interval = UpdateInterval.current
         HotKeyCenter.shared.apply()
         MouseTriggers.shared.apply()
         PresenceSettings.shared.reload()
