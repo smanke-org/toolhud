@@ -60,6 +60,9 @@ final class HUDPanel: NSPanel {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
+        // Set outright: a clear window otherwise lets clicks through to the app underneath
+        // wherever the window server sees no drawing, which can be the whole HUD.
+        ignoresMouseEvents = false
         hasShadow = false
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
