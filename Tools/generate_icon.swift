@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
 // Generates the app icon in the same periodic-table style as M3 Tracker: atomic number
 // "27", tipped 45° to the left, the "Th" symbol, and the name along the bottom, on
-// the amber of a lit Stargate chevron.
+// brushed silver.
 // Run with:
 //   swift Tools/generate_icon.swift
 //
@@ -31,7 +31,7 @@ let cornerRadius = side * 0.215
 
 let tilePath = CGPath(roundedRect: tile, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
 
-// MARK: - Amber body
+// MARK: - Silver body
 
 ctx.saveGState()
 ctx.addPath(tilePath)
@@ -39,10 +39,11 @@ ctx.clip()
 
 let colorSpace = CGColorSpaceCreateDeviceRGB()
 let bodyColors = [
-    NSColor(srgbRed: 1.00, green: 0.80, blue: 0.40, alpha: 1.0).cgColor,
-    NSColor(srgbRed: 0.93, green: 0.45, blue: 0.10, alpha: 1.0).cgColor,
+    NSColor(srgbRed: 0.95, green: 0.96, blue: 0.97, alpha: 1.0).cgColor,
+    NSColor(srgbRed: 0.80, green: 0.82, blue: 0.85, alpha: 1.0).cgColor,
+    NSColor(srgbRed: 0.60, green: 0.62, blue: 0.66, alpha: 1.0).cgColor,
 ] as CFArray
-let bodyGradient = CGGradient(colorsSpace: colorSpace, colors: bodyColors, locations: [0.0, 1.0])!
+let bodyGradient = CGGradient(colorsSpace: colorSpace, colors: bodyColors, locations: [0.0, 0.55, 1.0])!
 ctx.drawLinearGradient(
     bodyGradient,
     start: CGPoint(x: tile.minX, y: tile.maxY),
@@ -61,7 +62,7 @@ gloss.addCurve(
 gloss.addLine(to: CGPoint(x: tile.minX, y: tile.maxY))
 gloss.closeSubpath()
 ctx.addPath(gloss)
-ctx.setFillColor(NSColor.white.withAlphaComponent(0.10).cgColor)
+ctx.setFillColor(NSColor.white.withAlphaComponent(0.22).cgColor)
 ctx.fillPath()
 
 ctx.restoreGState()
