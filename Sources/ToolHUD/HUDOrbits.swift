@@ -56,6 +56,7 @@ struct ConstellationView: View {
                 .shadow(color: Color(hex: "#AAC8FF").opacity(0.45), radius: 20)
             CenterReadout(model: model, titleFont: .system(size: 15, weight: .bold), width: 200)
                 .offset(y: 70)
+            SettingsGear(model: model, size: 11, tint: Color(hex: "#C8DCFF"), litGlyph: Color(hex: "#0C101E"))
         }
     }
 }
@@ -112,6 +113,10 @@ struct GlassPillsView: View {
             .overlay(Circle().strokeBorder(Color.white.opacity(0.85), lineWidth: 1))
             .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
             .minimumScaleFactor(0.7)
+            // White, like the pills, with a dark gear.
+            SettingsGear(model: model, size: 11, tint: Color(hex: "#141821"), litGlyph: .white)
+                .background(Circle().fill(Color.white.opacity(min(1, model.opacity + 0.15))).frame(width: 26, height: 26)
+                    .position(x: HUDModel.middle, y: HUDModel.middle + 76))
         }
     }
 
@@ -191,6 +196,7 @@ struct PlanetaryView: View {
             .background(Circle().fill(RadialGradient(colors: [Color(hex: "#FFF2CC"), Color(hex: "#FFB53D"), Color(hex: "#E0670F")],
                                                      center: UnitPoint(x: 0.4, y: 0.35), startRadius: 0, endRadius: 60)))
             .shadow(color: Color(hex: "#FFAA3C").opacity(0.7), radius: 30)
+            SettingsGear(model: model, size: 11, tint: Color(hex: "#FFD27A"), litGlyph: Color(hex: "#3A1C00"))
         }
         .opacity(min(1, model.entrance(duration: 0.4) * 1.5))
     }

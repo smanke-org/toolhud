@@ -279,21 +279,30 @@ private func usKey(_ c: Character) -> (keyCode: UInt16, shift: Bool)? {
 
 // MARK: - Settings gear
 
-@Test func haloGearSitsInsideTheCenterDiskClearOfTheButtons() throws {
-    let gear = try #require(HUDLayout.gearCenter(for: .halo))
-    // The center disk is 86 pt across its radius; the slices start at 97.
-    #expect(gear.length + HUDLayout.gearReach < 86)
-    for count in DefaultRing.minCount...DefaultRing.maxCount {
-        for center in HUDLayout.centers(for: .halo, count: count) {
-            #expect(center.distance(to: gear) > HUDLayout.gearReach + 40, "count \(count)")
+@Test func everyLookHasAGearClearOfItsButtons() throws {
+    for look in Visualization.allCases {
+        for count in DefaultRing.minCount...DefaultRing.maxCount {
+            let gear = try #require(HUDLayout.gearCenter(for: look, count: count), "\(look)")
+            // Inside the canvas, and far enough from every button that pointing at one
+            // never lands on the gear.
+            #expect(abs(gear.x) < HUDLayout.canvas / 2 && abs(gear.y) < HUDLayout.canvas / 2)
+            let centers = look == .planetary ? HUDLayout.centers(for: look, count: count, phase: 0)
+                                             : HUDLayout.centers(for: look, count: count)
+            for center in centers {
+                #expect(center.distance(to: gear) > HUDLayout.gearReach + 30, "\(look) \(count)")
+            }
         }
     }
 }
 
+@Test func haloGearSitsInsideTheCenterDisk() throws {
+    let gear = try #require(HUDLayout.gearCenter(for: .halo, count: 8))
+    #expect(gear.length + HUDLayout.gearReach < 86)
+}
+
 @Test func pointingAtTheGearIsRecognizedOnlyNearIt() throws {
-    let gear = try #require(HUDLayout.gearCenter(for: .halo))
-    #expect(HUDLayout.pointsAtGear(gear, in: .halo))
-    #expect(HUDLayout.pointsAtGear(HUDPoint(gear.x + 10, gear.y + 10), in: .halo))
-    #expect(!HUDLayout.pointsAtGear(HUDPoint(gear.x, gear.y + 30), in: .halo))
-    #expect(!HUDLayout.pointsAtGear(gear, in: .orbit), "only Halo has a gear so far")
+    let gear = try #require(HUDLayout.gearCenter(for: .halo, count: 8))
+    #expect(HUDLayout.pointsAtGear(gear, in: .halo, count: 8))
+    #expect(HUDLayout.pointsAtGear(HUDPoint(gear.x + 10, gear.y + 10), in: .halo, count: 8))
+    #expect(!HUDLayout.pointsAtGear(HUDPoint(gear.x, gear.y + 30), in: .halo, count: 8))
 }

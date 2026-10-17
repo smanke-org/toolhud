@@ -41,7 +41,7 @@ final class HUDModel {
     var centers: [HUDPoint] { HUDLayout.centers(for: visualization, count: slots.count, phase: phase) }
 
     /// The look draws a Settings gear.
-    var hasGear: Bool { HUDLayout.gearCenter(for: visualization) != nil }
+    var hasGear: Bool { HUDLayout.gearCenter(for: visualization, count: slots.count) != nil }
 
     /// The button the readout describes.
     var focus: Int? { fired ?? highlighted }
@@ -251,7 +251,7 @@ final class HUDController {
             guard hypot(mouse.x - at.x, mouse.y - at.y) > 4 else { return }
             keyboardPointer = nil
         }
-        let onGear = HUDLayout.pointsAtGear(local, in: model.visualization)
+        let onGear = HUDLayout.pointsAtGear(local, in: model.visualization, count: model.slots.count)
         if onGear != model.gearHovered { model.gearHovered = onGear }
         let chosen = onGear ? nil : HUDLayout.selection(at: local, centers: model.centers, style: model.visualization.selection)
         setHighlight(chosen)
@@ -267,7 +267,7 @@ final class HUDController {
         if highlight >= 0 { model.highlighted = highlight }
         if highlight == -2 { model.gearHovered = true }
         if visualization == .dial, highlight >= 0 { model.turnDial(to: highlight) }
-        if let gear = HUDLayout.gearCenter(for: visualization), let screen = NSScreen.screens.first {
+        if let gear = HUDLayout.gearCenter(for: visualization, count: model.slots.count), let screen = NSScreen.screens.first {
             // In CG coordinates (top-left origin), for a test click.
             let x = center.x + gear.x * scale, y = screen.frame.maxY - (center.y - gear.y * scale)
             DebugHooks.trace("gear at \(Int(x)) \(Int(y))")

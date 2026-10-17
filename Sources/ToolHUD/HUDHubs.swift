@@ -10,11 +10,8 @@ struct CommandDeckView: View {
 
     var body: some View {
         let n = model.slots.count
-        let cols = HUDLayout.deckColumns(n)
-        let rows = Int((Double(n) / Double(cols)).rounded(.up))
-        let gridW = Double(cols) * HUDLayout.keySize.width + Double(cols - 1) * HUDLayout.keyGap
-        let gridH = Double(rows) * HUDLayout.keySize.height + Double(max(rows - 1, 0)) * HUDLayout.keyGap
-        let panelW = max(gridW + 44, 300), panelH = gridH + 44 + 46 + 40
+        let panel = HUDLayout.deckPanel(n)
+        let panelW = panel.width, panelH = panel.height
         let open = model.entrance(duration: 0.3)
         ZStack {
             Chamfer(cut: 18, twoCorners: true)
@@ -33,6 +30,7 @@ struct CommandDeckView: View {
                     Text("\(String(format: "%02d", n)) KEYS · α \(Int(model.opacity * 100))")
                         .font(.system(size: 9.5, design: .monospaced)).tracking(1.2)
                         .foregroundStyle(Self.mint.opacity(0.7))
+                        .padding(.trailing, 34) // room for the Settings gear
                 }
                 .frame(height: 30)
                 Rectangle().fill(Self.mint.opacity(0.18)).frame(height: 1)
@@ -55,6 +53,7 @@ struct CommandDeckView: View {
                     .frame(width: HUDLayout.keySize.width, height: HUDLayout.keySize.height)
                     .position(x: s.point.x, y: s.point.y + 3)
             }
+            SettingsGear(model: model, size: 10, tint: Self.mint, litGlyph: Color(hex: "#0E1115"), square: true)
         }
         .offset(y: 14 * (1 - open))
         .scaleEffect(0.96 + 0.04 * open)
@@ -62,6 +61,7 @@ struct CommandDeckView: View {
     }
 
     private var footer: String {
+        if model.gearHovered { return "› OPEN SETTINGS · BUTTONS, LOOKS AND TRIGGERS" }
         guard let slot = model.focusSlot else { return "› AWAITING INPUT · PRESS 1–\(min(model.slots.count, 9))" }
         if model.fired != nil { return "▶ EXECUTED \(slot.name.uppercased())" }
         return "› \(slot.summary.uppercased())"
@@ -138,15 +138,17 @@ struct HiveView: View {
                                               startRadius: 0, endRadius: 60))
                     .padding(2)
                 VStack(spacing: 4) {
-                    SlotGlyph(symbol: model.focusSlot?.symbol ?? "hexagon", size: 24, weight: .medium, color: Self.honey)
-                    Text(model.fired != nil ? "SENT" : model.highlighted.map { "SLOT \($0 + 1)" } ?? "HIVE")
+                    SlotGlyph(symbol: model.focusSlot?.symbol ?? "hexagon", size: 22, weight: .medium, color: Self.honey)
+                    Text(model.fired != nil ? "SENT" : model.gearHovered ? "SETUP" : model.highlighted.map { "SLOT \($0 + 1)" } ?? "HIVE")
                         .font(.system(size: 9.5, weight: .bold, design: .monospaced)).tracking(2).foregroundStyle(Self.honey)
                 }
+                .offset(y: -10) // room for the Settings gear below
             }
             .frame(width: cellW, height: cellH)
+            SettingsGear(model: model, size: 9, tint: Self.honey, litGlyph: Color(hex: "#14100A"))
             VStack(spacing: 4) {
                 Text(model.readout.title).font(.system(size: 17, weight: .bold)).foregroundStyle(Color(hex: "#FFF7E6"))
-                Text(model.focusSlot == nil ? "Point at a cell or press its number" : model.readout.detail)
+                Text(model.focusSlot == nil && !model.gearHovered ? "Point at a cell or press its number" : model.readout.detail)
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(model.focusSlot?.tint.color ?? Self.honey.opacity(0.6))
             }

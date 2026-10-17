@@ -182,22 +182,28 @@ struct Ticks: Shape {
 
 // MARK: - Pieces
 
-/// The small gear that opens Settings, drawn where `HUDLayout.gearCenter` says. It brightens
-/// and fills when pointed at.
+/// The small gear that opens Settings, drawn where `HUDLayout.gearCenter` says, in the
+/// look's own colors. It fills with `tint` and grows a little when pointed at.
 struct SettingsGear: View {
     let model: HUDModel
     var size: Double = 13
     var tint: Color = .white
+    /// The gear's color while pointed at, on the `tint` fill.
+    var litGlyph: Color = .black.opacity(0.85)
+    /// A rounded square instead of a circle, for the keycap look.
+    var square = false
 
     var body: some View {
-        if let gear = HUDLayout.gearCenter(for: model.visualization) {
+        if let gear = HUDLayout.gearCenter(for: model.visualization, count: model.slots.count) {
             let on = model.gearHovered
+            let shape = RoundedRectangle(cornerRadius: square ? 6 : size, style: .continuous)
             Image(systemName: "gearshape.fill")
                 .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(on ? Color.black.opacity(0.85) : tint.opacity(0.55))
+                .foregroundStyle(on ? litGlyph : tint.opacity(0.6))
                 .frame(width: size * 2, height: size * 2)
-                .background(Circle().fill(on ? tint : tint.opacity(0.08)))
-                .overlay(Circle().strokeBorder(tint.opacity(on ? 0 : 0.18), lineWidth: 1))
+                .background(shape.fill(on ? tint : tint.opacity(0.09)))
+                .overlay(shape.strokeBorder(tint.opacity(on ? 0 : 0.22), lineWidth: 1))
+                .shadow(color: on ? tint.opacity(0.6) : .clear, radius: 8)
                 .scaleEffect(on ? 1.12 : 1)
                 .animation(.spring(response: 0.2, dampingFraction: 0.65), value: on)
                 .position(x: HUDModel.middle + gear.x, y: HUDModel.middle + gear.y)

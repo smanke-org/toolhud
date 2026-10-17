@@ -88,6 +88,7 @@ struct OrbitView: View {
                 .frame(width: 104, height: 104)
             CenterReadout(model: model, titleFont: .system(size: 13.5, weight: .semibold), detailFont: .system(size: 9),
                           width: 90)
+            SettingsGear(model: model, size: 11)
         }
     }
 }
@@ -145,6 +146,8 @@ struct DialView: View {
                           color: model.focusSlot?.tint.color ?? Self.amber)
                 CenterReadout(model: model, titleFont: .system(size: 18, weight: .heavy), width: 170)
             }
+            .offset(y: -8)
+            SettingsGear(model: model, size: 12, tint: Self.amber)
         }
         .scaleEffect(0.8 + 0.2 * open)
         .opacity(min(1, open * 1.5))
@@ -215,6 +218,8 @@ struct StargateView: View {
                               titleColor: firing ? Color(hex: "#06204D") : .white,
                               detailColor: firing ? Color(hex: "#0B2A66") : .white.opacity(0.6), width: 170)
             }
+            .offset(y: -8)
+            SettingsGear(model: model, size: 12, tint: Self.lamp)
         }
         .scaleEffect(0.85 + 0.15 * open)
         .opacity(min(1, open * 1.5))
@@ -356,6 +361,8 @@ struct RedAlertView: View {
                               detailFont: .system(size: 9, design: .monospaced), detailColor: Color(hex: "#FFB3BA").opacity(0.85),
                               uppercase: true, width: 150)
             }
+            .offset(y: -8)
+            SettingsGear(model: model, size: 11, tint: Self.red, litGlyph: .white, square: true)
         }
         .scaleEffect(0.7 + 0.3 * open)
         .rotationEffect(.degrees(-20 * (1 - open)))

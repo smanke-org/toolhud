@@ -26,6 +26,7 @@ Requires macOS 26 or later.
 | 1–9, 0 | Run button 1–10 while the HUD is open. |
 | ← → ↑ ↓, Tab | Move between buttons; Return runs the lit one. |
 | Esc | Close the HUD. |
+| ⚙ or , | Open Settings. Every look has a small gear; click it, or press comma. |
 
 Buttons are chosen by direction, as in a marking menu: you don't have to hit a button, just
 move toward it. After a while the gestures become muscle memory.

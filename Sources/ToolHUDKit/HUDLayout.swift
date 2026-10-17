@@ -78,19 +78,29 @@ public enum HUDLayout {
     /// How close the pointer must be to the gear to point at it.
     public static let gearReach = 15.0
 
-    /// Where a look draws its Settings gear, or nil for a look without one yet. It sits in
-    /// the center, clear of the buttons, so aiming at a button never passes over it.
-    public static func gearCenter(for visualization: Visualization) -> HUDPoint? {
+    /// Where a look draws its Settings gear: in a quiet spot of the look itself, clear of
+    /// the buttons, so aiming at a button never passes over it.
+    public static func gearCenter(for visualization: Visualization, count: Int) -> HUDPoint? {
         switch visualization {
         case .halo: HUDPoint(0, 52)
-        default: nil
+        case .orbit: HUDPoint(0, 78)
+        case .dial: HUDPoint(0, 90)
+        case .stargate: HUDPoint(0, 94)
+        case .redAlert: HUDPoint(0, 84)
+        case .constellation: HUDPoint(0, -66)
+        case .glassPills: HUDPoint(0, 76)
+        case .planetary: HUDPoint(0, 66)
+        case .hive: HUDPoint(0, 33)
+        case .commandDeck:
+            // At the right end of the panel's header.
+            { let panel = deckPanel(count); return HUDPoint(panel.width / 2 - 36, -panel.height / 2 + 23) }()
         }
     }
 
     /// Whether the pointer is on the gear. Checked before the buttons, so it wins where
     /// the two overlap.
-    public static func pointsAtGear(_ pointer: HUDPoint, in visualization: Visualization) -> Bool {
-        guard let gear = gearCenter(for: visualization) else { return false }
+    public static func pointsAtGear(_ pointer: HUDPoint, in visualization: Visualization, count: Int) -> Bool {
+        guard let gear = gearCenter(for: visualization, count: count) else { return false }
         return pointer.distance(to: gear) <= gearReach
     }
 
@@ -132,6 +142,15 @@ public enum HUDLayout {
 
     public static func deckColumns(_ count: Int) -> Int {
         count <= 3 ? max(count, 1) : count == 4 ? 2 : count <= 6 ? 3 : 4
+    }
+
+    /// The Command Deck's panel: the keys plus margins, a header and a footer.
+    public static func deckPanel(_ count: Int) -> (width: Double, height: Double) {
+        let cols = deckColumns(count)
+        let rows = Int((Double(count) / Double(cols)).rounded(.up))
+        let gridW = Double(cols) * keySize.width + Double(cols - 1) * keyGap
+        let gridH = Double(rows) * keySize.height + Double(max(rows - 1, 0)) * keyGap
+        return (max(gridW + 44, 300), gridH + 44 + 46 + 40)
     }
 
     public static func deck(_ count: Int) -> [HUDPoint] {
