@@ -314,16 +314,24 @@ struct KeystrokeFields: View {
                         if on { modifiers.remove(toggle.modifier) } else { modifiers.insert(toggle.modifier) }
                         save()
                     } label: {
-                        Image(systemName: toggle.symbol)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(on ? Color.white : Color.primary)
-                            .frame(width: 34, height: 26)
-                            .background(on ? Color.accentColor : Color.secondary.opacity(0.14),
-                                        in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                            .contentShape(Rectangle())
+                        // The symbol with its name under it: many people don't know ⌥ from ⌃.
+                        VStack(spacing: 2) {
+                            Image(systemName: toggle.symbol)
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(toggle.name)
+                                .font(.system(size: 10, weight: .medium))
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                        .foregroundStyle(on ? Color.white : Color.primary)
+                        .frame(width: 62, height: 40)
+                        .background(on ? Color.accentColor : Color.secondary.opacity(0.14),
+                                    in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help(on ? "\(toggle.name) is held" : "Hold \(toggle.name)")
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(toggle.name)
                     .accessibilityAddTraits(on ? [.isSelected] : [])
                 }
