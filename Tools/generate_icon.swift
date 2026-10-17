@@ -105,7 +105,7 @@ ctx.restoreGState()
 let symbol = "Th"
 // A two-letter symbol is wider than M3's "M³", so the nameless variant can't grow as far without
 // running into the 27; it sits a little below center to clear it.
-drawSymbol("Th", in: tile, includeName: includeName, ctx: ctx)
+drawSymbol(symbol, in: tile, includeName: includeName, ctx: ctx)
 
 // Name along the bottom.
 if includeName {

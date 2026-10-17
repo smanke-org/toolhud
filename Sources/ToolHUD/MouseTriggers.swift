@@ -159,7 +159,9 @@ private func mouseTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: 
     if event.getIntegerValueField(.eventSourceUserData) == ActionRunner.eventMarker {
         return Unmanaged.passUnretained(event)
     }
-    // The tap's run loop source is on the main run loop.
-    let pass = MainActor.assumeIsolated { MouseTriggers.shared.handle(type, event) }
+    // The tap's run loop source is on the main run loop, so the event never leaves this
+    // thread; CGEvent just isn't Sendable.
+    nonisolated(unsafe) let mainEvent = event
+    let pass = MainActor.assumeIsolated { MouseTriggers.shared.handle(type, mainEvent) }
     return pass ? Unmanaged.passUnretained(event) : nil
 }
