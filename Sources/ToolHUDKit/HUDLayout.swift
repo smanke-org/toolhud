@@ -73,6 +73,27 @@ public enum HUDLayout {
         }
     }
 
+    // MARK: - Settings gear
+
+    /// How close the pointer must be to the gear to point at it.
+    public static let gearReach = 15.0
+
+    /// Where a look draws its Settings gear, or nil for a look without one yet. It sits in
+    /// the center, clear of the buttons, so aiming at a button never passes over it.
+    public static func gearCenter(for visualization: Visualization) -> HUDPoint? {
+        switch visualization {
+        case .halo: HUDPoint(0, 52)
+        default: nil
+        }
+    }
+
+    /// Whether the pointer is on the gear. Checked before the buttons, so it wins where
+    /// the two overlap.
+    public static func pointsAtGear(_ pointer: HUDPoint, in visualization: Visualization) -> Bool {
+        guard let gear = gearCenter(for: visualization) else { return false }
+        return pointer.distance(to: gear) <= gearReach
+    }
+
     // MARK: - Positions
 
     /// Where each button's center is drawn. `phase` (degrees) turns the Planetary orbits.

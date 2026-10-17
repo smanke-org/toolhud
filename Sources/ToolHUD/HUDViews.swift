@@ -93,6 +93,7 @@ extension HUDModel {
 
     /// The readout's three lines for the button in focus.
     var readout: (title: String, app: String, detail: String) {
+        if gearHovered && fired == nil { return ("Settings", "ToolHUD", "Buttons, looks and triggers") }
         guard let slot = focusSlot else {
             return ("ToolHUD", "Point to choose", "Esc closes · 1–\(min(slots.count, 9)) pick")
         }
@@ -180,6 +181,30 @@ struct Ticks: Shape {
 }
 
 // MARK: - Pieces
+
+/// The small gear that opens Settings, drawn where `HUDLayout.gearCenter` says. It brightens
+/// and fills when pointed at.
+struct SettingsGear: View {
+    let model: HUDModel
+    var size: Double = 13
+    var tint: Color = .white
+
+    var body: some View {
+        if let gear = HUDLayout.gearCenter(for: model.visualization) {
+            let on = model.gearHovered
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(on ? Color.black.opacity(0.85) : tint.opacity(0.55))
+                .frame(width: size * 2, height: size * 2)
+                .background(Circle().fill(on ? tint : tint.opacity(0.08)))
+                .overlay(Circle().strokeBorder(tint.opacity(on ? 0 : 0.18), lineWidth: 1))
+                .scaleEffect(on ? 1.12 : 1)
+                .animation(.spring(response: 0.2, dampingFraction: 0.65), value: on)
+                .position(x: HUDModel.middle + gear.x, y: HUDModel.middle + gear.y)
+                .accessibilityLabel("Settings")
+        }
+    }
+}
 
 /// A button's SF Symbol, or a plain circle if the name isn't one.
 struct SlotGlyph: View {

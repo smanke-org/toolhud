@@ -13,6 +13,8 @@ final class HUDModel {
     var opacity = 0.8
     var highlighted: Int?
     var fired: Int?
+    /// The pointer is on the Settings gear.
+    var gearHovered = false
     /// Seconds since the HUD opened (the opening animations run on it), and when it fired.
     var time = 0.0
     var firedAt = 0.0
@@ -37,6 +39,9 @@ final class HUDModel {
     }
 
     var centers: [HUDPoint] { HUDLayout.centers(for: visualization, count: slots.count, phase: phase) }
+
+    /// The look draws a Settings gear.
+    var hasGear: Bool { HUDLayout.gearCenter(for: visualization) != nil }
 
     /// The button the readout describes.
     var focus: Int? { fired ?? highlighted }
@@ -157,6 +162,7 @@ final class HUDController {
         model.opacity = prefs.opacity
         model.highlighted = nil
         model.fired = nil
+        model.gearHovered = false
         model.time = 0
         model.dialIndex = 0
         closing = false
@@ -212,6 +218,7 @@ final class HUDController {
         panel?.orderOut(nil)
         model.highlighted = nil
         model.fired = nil
+        model.gearHovered = false
     }
 
     private func makePanel() -> HUDPanel {
@@ -244,18 +251,27 @@ final class HUDController {
             guard hypot(mouse.x - at.x, mouse.y - at.y) > 4 else { return }
             keyboardPointer = nil
         }
-        let chosen = HUDLayout.selection(at: local, centers: model.centers, style: model.visualization.selection)
+        let onGear = HUDLayout.pointsAtGear(local, in: model.visualization)
+        if onGear != model.gearHovered { model.gearHovered = onGear }
+        let chosen = onGear ? nil : HUDLayout.selection(at: local, centers: model.centers, style: model.visualization.selection)
         setHighlight(chosen)
     }
 
     #if DEBUG
     /// Shows `visualization` with button `highlight` lit, ignoring the pointer, for screenshots.
+    /// A negative `highlight` leaves the pointer in charge; -2 shows the gear lit.
     func debugShow(_ visualization: Visualization, highlight: Int) {
-        DebugHooks.freezeHighlight = true
+        DebugHooks.freezeHighlight = highlight != -1
         show(atScreenCenter: true)
         model.visualization = visualization
-        model.highlighted = highlight
-        if visualization == .dial { model.turnDial(to: highlight) }
+        if highlight >= 0 { model.highlighted = highlight }
+        if highlight == -2 { model.gearHovered = true }
+        if visualization == .dial, highlight >= 0 { model.turnDial(to: highlight) }
+        if let gear = HUDLayout.gearCenter(for: visualization), let screen = NSScreen.screens.first {
+            // In CG coordinates (top-left origin), for a test click.
+            let x = center.x + gear.x * scale, y = screen.frame.maxY - (center.y - gear.y * scale)
+            DebugHooks.trace("gear at \(Int(x)) \(Int(y))")
+        }
     }
     #endif
 
@@ -273,7 +289,20 @@ final class HUDController {
 
     func click() {
         guard isShowing, !closing else { return }
-        if let index = model.highlighted { fire(index) } else { dismiss() }
+        if model.gearHovered { openSettings() } else if let index = model.highlighted { fire(index) } else { dismiss() }
+    }
+
+    /// Closes the HUD and opens Settings, from the gear or the comma key.
+    private func openSettings() {
+        dismiss()
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                SettingsWindow.shared.show()
+                // Activating the app as Settings opens puts the just-hidden panel back on
+                // screen (macOS 27), though AppKit still reports it hidden; hide it again.
+                HUDController.shared.panel?.orderOut(nil)
+            }
+        }
     }
 
     func scroll(_ delta: CGFloat) {
@@ -287,6 +316,7 @@ final class HUDController {
         guard n > 0 else { return }
         let current = model.highlighted ?? (by > 0 ? -1 : 0)
         keyboardPointer = NSEvent.mouseLocation
+        model.gearHovered = false
         setHighlight(((current + by) % n + n) % n)
     }
 
@@ -300,6 +330,8 @@ final class HUDController {
         switch code {
         case KeyCode.escape:
             dismiss()
+        case KeyCode.comma:
+            openSettings()
         case KeyCode.returnKey, KeyCode.keypadEnter, KeyCode.space:
             if let index = model.highlighted { fire(index) }
         case KeyCode.right, KeyCode.down:

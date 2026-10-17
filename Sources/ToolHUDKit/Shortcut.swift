@@ -150,6 +150,7 @@ public enum KeyCode {
     public static let b: UInt16 = 11, w: UInt16 = 13, r: UInt16 = 15, y: UInt16 = 16, t: UInt16 = 17
     public static let u: UInt16 = 32, l: UInt16 = 37, k: UInt16 = 40, n: UInt16 = 45
     public static let returnKey: UInt16 = 36, tab: UInt16 = 48, space: UInt16 = 49, grave: UInt16 = 50
+    public static let comma: UInt16 = 43
     public static let delete: UInt16 = 51, escape: UInt16 = 53, forwardDelete: UInt16 = 117
     public static let keypadEnter: UInt16 = 76
     public static let left: UInt16 = 123, right: UInt16 = 124, down: UInt16 = 125, up: UInt16 = 126

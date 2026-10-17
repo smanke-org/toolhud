@@ -39,6 +39,8 @@ struct HaloView: View {
                     .padding(8))
                 .frame(width: 172, height: 172)
             CenterReadout(model: model, width: 140)
+                .offset(y: -12)
+            SettingsGear(model: model)
         }
         .scaleEffect(0.6 + 0.4 * open)
         .opacity(min(1, open * 1.4))

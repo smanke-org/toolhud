@@ -276,3 +276,24 @@ private func usKey(_ c: Character) -> (keyCode: UInt16, shift: Bool)? {
     let file = try RingFile.decode(RingFile(visualization: .halo, slots: [slot]).encoded())
     #expect(file.slots.first?.keys == slot.keys)
 }
+
+// MARK: - Settings gear
+
+@Test func haloGearSitsInsideTheCenterDiskClearOfTheButtons() throws {
+    let gear = try #require(HUDLayout.gearCenter(for: .halo))
+    // The center disk is 86 pt across its radius; the slices start at 97.
+    #expect(gear.length + HUDLayout.gearReach < 86)
+    for count in DefaultRing.minCount...DefaultRing.maxCount {
+        for center in HUDLayout.centers(for: .halo, count: count) {
+            #expect(center.distance(to: gear) > HUDLayout.gearReach + 40, "count \(count)")
+        }
+    }
+}
+
+@Test func pointingAtTheGearIsRecognizedOnlyNearIt() throws {
+    let gear = try #require(HUDLayout.gearCenter(for: .halo))
+    #expect(HUDLayout.pointsAtGear(gear, in: .halo))
+    #expect(HUDLayout.pointsAtGear(HUDPoint(gear.x + 10, gear.y + 10), in: .halo))
+    #expect(!HUDLayout.pointsAtGear(HUDPoint(gear.x, gear.y + 30), in: .halo))
+    #expect(!HUDLayout.pointsAtGear(gear, in: .orbit), "only Halo has a gear so far")
+}

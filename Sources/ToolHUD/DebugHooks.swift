@@ -25,7 +25,14 @@ enum DebugHooks {
 
     static func trace(_ s: String) {
         guard let path = ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_TRACE"] else { return }
-        try? (s + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+        let line = Data((s + "\n").utf8)
+        if let handle = FileHandle(forWritingAtPath: path) {
+            handle.seekToEndOfFile()
+            handle.write(line)
+            try? handle.close()
+        } else {
+            FileManager.default.createFile(atPath: path, contents: line)
+        }
     }
 
     static var screen: NSScreen? {
