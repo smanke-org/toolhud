@@ -38,6 +38,15 @@ import Testing
     }
 }
 
+@Test func expansionLensActionsUseItsScheme() {
+    let app = LensCatalog.expansionLens
+    #expect(LensCatalog.app("com.smanke.ExpansionLens") == app)
+    #expect(app.features.map(\.id) == ["quicksearch", "new", "newfromclipboard", "editlast", "toggle", "on", "off", "settings"])
+    #expect(app.url(for: "newfromclipboard")?.absoluteString == "expansionlens://newfromclipboard?source=toolhud")
+    #expect(app.downloadURL?.absoluteString == "https://github.com/smanke-org/ExpansionLens/releases/latest")
+    #expect(LensCatalog.textLens.downloadURL == nil)
+}
+
 // MARK: - Slots and rings
 
 @Test func defaultRingHasTwelveDistinctLensButtons() {

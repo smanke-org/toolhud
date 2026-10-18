@@ -36,8 +36,10 @@ final class LensDirectory {
         #endif
     }
 
-    /// The app's page on the developer's site, where it can be downloaded.
+    /// The app's page on the developer's site, where it can be downloaded, or its own
+    /// download link when it has no page there yet.
     static func webPage(for app: LensApp) -> URL {
+        if let url = app.downloadURL { return url }
         let slug = app.name.lowercased().replacingOccurrences(of: " ", with: "-")
         return URL(string: "https://stevemanke.com/\(slug)/") ?? URL(string: "https://stevemanke.com/")!
     }

@@ -11,6 +11,7 @@ import ToolHUDKit
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
 ///   TOOLHUD_DEBUG_BUTTON=<index>         starts Settings › Buttons on that button
+///   TOOLHUD_DEBUG_RUN_LENS=<bundle id>:<feature>  runs that lens action as a button would
 ///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
 ///                                      presses those keys, only if that app is in front
 ///
@@ -51,6 +52,18 @@ enum DebugHooks {
             let delay = Double(env["TOOLHUD_DEBUG_DELAY"] ?? "") ?? 1
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 MainActor.assumeIsolated { HUDController.shared.debugShow(look, highlight: index) }
+            }
+            return true
+        }
+        if let spec = env["TOOLHUD_DEBUG_RUN_LENS"] {
+            let parts = spec.split(separator: ":").map(String.init)
+            guard parts.count == 2, let app = LensDirectory.shared.app(parts[0]) else { return false }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                MainActor.assumeIsolated {
+                    let installed = LensDirectory.shared.installed[app.id]
+                    trace("running \(spec) urls=\(installed?.supportsURLs ?? false) version=\(installed?.version ?? "none")")
+                    ActionRunner.run(Slot(app, parts[1]))
+                }
             }
             return true
         }

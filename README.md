@@ -3,7 +3,7 @@
 ToolHUD puts the features of your favorite apps one gesture away. Press a shortcut or click
 the mouse in any app, and a ring of buttons opens around the pointer. Click a button and it
 runs: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick
-Paste, or press any key combination in any app.
+Paste, search your ExpansionLens snippets (1.0.0 or later), or press any key combination in any app.
 
 ## Download
 
@@ -44,7 +44,7 @@ app's color) and one of two actions, chosen per button:
   (`textlens://capture`, `pastelens://quickpaste`). It keeps working if you change that app's
   shortcuts. ToolHUD lists the installed lens apps and their features by name. Until an app
   supports lens actions, ToolHUD presses the feature's default shortcut instead. An app that
-  isn't installed links to its page on stevemanke.com.
+  isn't installed links to its page on stevemanke.com, or to its GitHub releases.
 - **Keystroke**: presses any key combination, either in the app you were using (the HUD never
   takes focus) or in an app you choose, which ToolHUD brings forward first. Turn on the
   modifiers to hold (⌘ ⌥ ⌃ ⇧) and type the key, or several keys to press one after another

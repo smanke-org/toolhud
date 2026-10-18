@@ -36,13 +36,18 @@ public struct LensApp: Hashable, Sendable, Identifiable {
     public var scheme: String
     public var color: SlotColor
     public var features: [LensFeature]
+    /// Where to get the app when it isn't installed, for apps without a page on the
+    /// developer's site yet. Nil means its stevemanke.com page.
+    public var downloadURL: URL?
 
-    public init(id: String, name: String, scheme: String, color: SlotColor, features: [LensFeature]) {
+    public init(id: String, name: String, scheme: String, color: SlotColor, features: [LensFeature],
+                downloadURL: URL? = nil) {
         self.id = id
         self.name = name
         self.scheme = scheme
         self.color = color
         self.features = features
+        self.downloadURL = downloadURL
     }
 
     public func feature(_ id: String) -> LensFeature? { features.first { $0.id == id } }
@@ -119,7 +124,26 @@ public enum LensCatalog {
                         activates: true),
         ])
 
-    public static let builtIn: [LensApp] = [textLens, clickLens, pasteLens, diskLens]
+    /// Needs ExpansionLens 1.0.0 or later, the first version, which answers all of these.
+    public static let expansionLens = LensApp(
+        id: "com.smanke.ExpansionLens", name: "ExpansionLens", scheme: "expansionlens", color: SlotColor(hex: "#22D3EE")!,
+        features: [
+            LensFeature(id: "quicksearch", title: "Search snippets", symbol: "magnifyingglass"),
+            LensFeature(id: "new", title: "New snippet", symbol: "plus.square", activates: true),
+            LensFeature(id: "newfromclipboard", title: "New snippet from the clipboard", shortTitle: "Clip to snippet",
+                        symbol: "doc.on.clipboard", activates: true),
+            LensFeature(id: "editlast", title: "Edit the last expanded snippet", shortTitle: "Edit last",
+                        symbol: "pencil.line", activates: true),
+            LensFeature(id: "toggle", title: "Turn expansion on or off", shortTitle: "Expansion on/off",
+                        symbol: "power"),
+            LensFeature(id: "on", title: "Turn expansion on", shortTitle: "Expansion on", symbol: "play.circle"),
+            LensFeature(id: "off", title: "Turn expansion off", shortTitle: "Expansion off", symbol: "pause.circle"),
+            LensFeature(id: "settings", title: "ExpansionLens settings", shortTitle: "Expander settings",
+                        symbol: "gearshape", activates: true),
+        ],
+        downloadURL: URL(string: "https://github.com/smanke-org/ExpansionLens/releases/latest"))
+
+    public static let builtIn: [LensApp] = [textLens, clickLens, pasteLens, diskLens, expansionLens]
 
     public static func app(_ bundleID: String) -> LensApp? { builtIn.first { $0.id == bundleID } }
 

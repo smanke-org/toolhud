@@ -213,7 +213,8 @@ struct SlotEditor: View {
             .foregroundStyle(status.ok ? Color.secondary : Color.orange)
         if let id = slot.lensApp, let app = directory.app(id), directory.installed[id] == nil {
             LabeledContent("") {
-                Link("Get \(app.name) at stevemanke.com", destination: LensDirectory.webPage(for: app))
+                Link("Get \(app.name) \(app.downloadURL == nil ? "at stevemanke.com" : "on GitHub")",
+                     destination: LensDirectory.webPage(for: app))
             }
             .font(.callout)
         }
