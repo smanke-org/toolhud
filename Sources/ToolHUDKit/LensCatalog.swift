@@ -128,6 +128,8 @@ public enum LensCatalog {
     public static let expansionLens = LensApp(
         id: "com.smanke.ExpansionLens", name: "ExpansionLens", scheme: "expansionlens", color: SlotColor(hex: "#22D3EE")!,
         features: [
+            LensFeature(id: "open", title: "Open ExpansionLens", shortTitle: "Snippets", symbol: "text.append",
+                        activates: true),
             LensFeature(id: "quicksearch", title: "Search snippets", symbol: "magnifyingglass"),
             LensFeature(id: "new", title: "New snippet", symbol: "plus.square", activates: true),
             LensFeature(id: "newfromclipboard", title: "New snippet from the clipboard", shortTitle: "Clip to snippet",
