@@ -10,6 +10,8 @@ import ToolHUDKit
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
+///   TOOLHUD_DEBUG_HELP_TEST=<png path>   presses Help on every Settings pane, traces what opened,
+///                                      renders Help (TOOLHUD_DEBUG_HELP_TOPIC) and Settings, then quits
 ///   TOOLHUD_DEBUG_BUTTON=<index>         starts Settings › Buttons on that button
 ///   TOOLHUD_DEBUG_RUN_LENS=<bundle id>:<feature>  runs that lens action as a button would
 ///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
@@ -78,6 +80,49 @@ enum DebugHooks {
                     let sequence = KeySequence.parse(text, modifiers: modifiers, lookup: KeyboardLayout.key(for:)).sequence
                     trace("posting \(sequence.display)")
                     ActionRunner.post(sequence)
+                }
+            }
+            return true
+        }
+        if let snapshot = env["TOOLHUD_DEBUG_HELP_TEST"] {
+            // Presses the Help button on every Settings pane, traces the topic it opened,
+            // then renders the Help window to `snapshot` and quits.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                MainActor.assumeIsolated {
+                    func helpButton(_ view: NSView) -> NSButton? {
+                        if let b = view as? NSButton, b.bezelStyle == .helpButton, !b.isHiddenOrHasHiddenAncestor { return b }
+                        for sub in view.subviews { if let hit = helpButton(sub) { return hit } }
+                        return nil
+                    }
+                    // General hangs SwiftUI layout in a staging run (sync never started), so skip it.
+                    for pane in SettingsPane.allCases where pane != .general {
+                        SettingsWindow.shared.show(pane)
+                        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+                        let button = SettingsWindow.shared.debugWindow?.contentView.flatMap(helpButton)
+                        button?.performClick(nil)
+                        RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+                        trace("pane \(pane.rawValue): button=\(button != nil) opened=\(HelpWindow.shared.state.selection ?? "-") visible=\(HelpWindow.shared.window?.isVisible == true)")
+                    }
+                    let unresolved = Help.topics.filter { $0.blocks.contains { $0.searchText.contains("{") } }.map(\.id)
+                    trace("topics=\(Help.topics.count) unresolved=\(unresolved) shortcut=\(Help.resolve("{shortcut}")) mouse=\(Help.resolve("{mouse}"))")
+                    let menu = NSMenu()
+                    (NSApp.delegate as? NSMenuDelegate)?.menuNeedsUpdate?(menu)
+                    trace("menu: \(menu.items.map(\.title).filter { !$0.isEmpty })")
+                    trace("help menu: \(NSApp.helpMenu?.items.map { $0.title + " " + $0.keyEquivalent } ?? [])")
+                    HelpWindow.shared.show(topic: env["TOOLHUD_DEBUG_HELP_TOPIC"] ?? "using")
+                    RunLoop.main.run(until: Date().addingTimeInterval(1))
+                    if let view = HelpWindow.shared.window?.contentView?.superview,
+                       let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                        view.cacheDisplay(in: view.bounds, to: rep)
+                        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: snapshot))
+                    }
+                    if let settings = SettingsWindow.shared.debugWindow, let view = settings.contentView?.superview,
+                       let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                        view.cacheDisplay(in: view.bounds, to: rep)
+                        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: snapshot + ".settings.png"))
+                    }
+                    trace("done")
+                    NSApp.terminate(nil)
                 }
             }
             return true

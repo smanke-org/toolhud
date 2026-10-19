@@ -83,9 +83,17 @@ struct SettingsRoot: View {
                 case .buttons: ButtonsSettings()
                 case .triggers: TriggersSettings()
                 }
-                Text("\(AppInfo.name) \(AppInfo.displayVersion)")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
+                // The version in the middle, the round Help button in the corner, as macOS does.
+                ZStack {
+                    Text("\(AppInfo.name) \(AppInfo.displayVersion)")
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Spacer()
+                        HelpButton(topic: Help.topic(for: selection.pane)).fixedSize()
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
             }
         }
         .onChange(of: selection.pane) { _, pane in SettingsWindow.shared.paneChanged(pane) }
