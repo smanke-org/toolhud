@@ -43,9 +43,14 @@ struct ConstellationView: View {
                 .animation(.spring(response: 0.25, dampingFraction: 0.5), value: s.on)
                 .position(s.point)
                 .opacity(min(1, t * 1.5))
-                SlotLabel(text: s.slot.name, on: s.on, size: 11.5, width: 120, offColor: Color(hex: "#DCE6FF").opacity(0.72))
-                    .position(x: s.point.x, y: s.point.y + (Double(s.point.y) > HUDModel.middle + 1 ? 38 : -38))
-                    .opacity(t)
+                let below = Double(s.point.y) > HUDModel.middle + 1
+                VStack(spacing: 3) {
+                    if !below { SlotLabel(text: s.slot.name, on: s.on, size: 11.5, width: 120, offColor: Color(hex: "#DCE6FF").opacity(0.72)) }
+                    SlotKeyCap(index: s.index, on: s.on, tint: Color(hex: "#DCE6FF"))
+                    if below { SlotLabel(text: s.slot.name, on: s.on, size: 11.5, width: 120, offColor: Color(hex: "#DCE6FF").opacity(0.72)) }
+                }
+                .position(x: s.point.x, y: s.point.y + (below ? 46 : -46))
+                .opacity(t)
             }
             Image(systemName: "sparkle")
                 .font(.system(size: 24))
@@ -129,8 +134,8 @@ struct GlassPillsView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(s.on ? Color.white : Color(hex: "#141821"))
                 .lineLimit(1)
-            if s.index < 9 {
-                Text("\(s.index + 1)")
+            if let key = SlotKeyCap.key(for: s.index) {
+                Text(key)
                     .font(.system(size: 10.5, weight: .bold))
                     .foregroundStyle(s.on ? Color.white : Color(hex: "#4A5060"))
                     .frame(minWidth: 18, minHeight: 18)
@@ -184,6 +189,8 @@ struct PlanetaryView: View {
                 .position(s.point)
                 SlotLabel(text: s.slot.name, on: s.on, size: 11, width: 110, offColor: Color(hex: "#F0ECE4").opacity(0.72))
                     .position(x: s.point.x, y: s.point.y + size / 2 + 12)
+                SlotKeyCap(index: s.index, on: s.on, tint: Color(hex: "#F0ECE4"))
+                    .position(x: s.point.x, y: s.point.y + size / 2 + 31)
             }
             VStack(spacing: 2) {
                 Text(model.readout.title)

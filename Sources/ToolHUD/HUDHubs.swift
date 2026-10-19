@@ -81,8 +81,8 @@ struct CommandDeckView: View {
             Rectangle().fill(s.color).frame(height: 3).opacity(s.on ? 1 : 0.55)
                 .shadow(color: s.color, radius: s.on ? 8 : 3)
                 .padding(.leading, 12)
-            Text(String(format: "%02d", s.index + 1)).font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(Color(hex: "#C8FFEB").opacity(0.55)).padding(.leading, 12).padding(.top, 11)
+            SlotKeyCap(index: s.index, on: s.on, tint: Color(hex: "#C8FFEB"))
+                .padding(.leading, 12).padding(.top, 9)
             SlotGlyph(symbol: s.slot.symbol, size: 18, color: s.on ? .white : s.color)
                 .frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 11).padding(.top, 9)
             VStack(alignment: .leading, spacing: 3) {
@@ -123,6 +123,7 @@ struct HiveView: View {
                         Text(s.slot.name).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color(hex: "#FFF7E6"))
                             .lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.75)
                             .frame(width: cellW - 16)
+                        SlotKeyCap(index: s.index, on: s.on, tint: Color(hex: "#FFF7E6"))
                     }
                 }
                 .frame(width: cellW, height: cellH)

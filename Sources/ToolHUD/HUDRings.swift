@@ -24,9 +24,11 @@ struct HaloView: View {
                             .fill(s.color)
                     }
                     SlotGlyph(symbol: s.slot.symbol, size: 20, color: s.on ? .white : .white.opacity(0.88))
-                        .position(x: s.point.x, y: s.point.y - 9)
+                        .position(x: s.point.x, y: s.point.y - 17)
                     SlotLabel(text: s.slot.name, on: s.on, width: min(96, 2 * .pi * 146 / Double(n) - 6))
-                        .position(x: s.point.x, y: s.point.y + 15)
+                        .position(x: s.point.x, y: s.point.y + 7)
+                    SlotKeyCap(index: s.index, on: s.on)
+                        .position(x: s.point.x, y: s.point.y + 27)
                 }
                 .offset(x: lift.x, y: lift.y)
                 .shadow(color: s.on ? s.color.opacity(0.6) : .clear, radius: 14)
@@ -80,6 +82,9 @@ struct OrbitView: View {
                 SlotLabel(text: s.slot.name, on: s.on, width: 110)
                     .position(x: x, y: y + 44)
                     .opacity(t)
+                SlotKeyCap(index: s.index, on: s.on)
+                    .position(x: x, y: y + 63)
+                    .opacity(t)
             }
             Circle()
                 .fill(Color(white: 0.07).opacity(min(1, model.opacity + 0.12)))
@@ -118,12 +123,15 @@ struct DialView: View {
                     VStack(spacing: 5) {
                         SlotGlyph(symbol: s.slot.symbol, size: 20, color: s.on ? .white : .white.opacity(0.72))
                         SlotLabel(text: s.slot.name, on: s.on, size: 9.5, width: 66, uppercase: true, offColor: .white.opacity(0.72))
-                        Circle().fill(s.color).frame(width: 6, height: 6)
+                        HStack(spacing: 5) {
+                            Circle().fill(s.color).frame(width: 6, height: 6)
+                            SlotKeyCap(index: s.index, on: s.on)
+                        }
                     }
-                    .frame(width: 66, height: 76)
+                    .frame(width: 66, height: 84)
                     .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
                         .fill(s.on ? Self.amber.opacity(0.16) : .clear))
-                    .position(x: HUDModel.middle, y: HUDModel.middle - 160)
+                    .position(x: HUDModel.middle, y: HUDModel.middle - 162)
                     .rotationEffect(.degrees(s.angle))
                 }
             }
@@ -204,9 +212,13 @@ struct StargateView: View {
                 .position(s.point)
                 let side = sin(s.angle * .pi / 180)
                 let labelPoint = canvasPoint(255, s.angle)
-                SlotLabel(text: s.slot.name, on: lit, size: 11, width: 92)
-                    .multilineTextAlignment(abs(side) < 0.3 ? .center : side > 0 ? .leading : .trailing)
-                    .frame(width: 92, alignment: abs(side) < 0.3 ? .center : side > 0 ? .leading : .trailing)
+                let edge: HorizontalAlignment = abs(side) < 0.3 ? .center : side > 0 ? .leading : .trailing
+                VStack(alignment: edge, spacing: 3) {
+                    SlotLabel(text: s.slot.name, on: lit, size: 11, width: 92)
+                        .multilineTextAlignment(abs(side) < 0.3 ? .center : side > 0 ? .leading : .trailing)
+                        .frame(width: 92, alignment: abs(side) < 0.3 ? .center : side > 0 ? .leading : .trailing)
+                    SlotKeyCap(index: s.index, on: lit, tint: Color(hex: "#FFD9AD"))
+                }
                     .position(x: labelPoint.x + (abs(side) < 0.3 ? 0 : side > 0 ? 36 : -36),
                               y: labelPoint.y + (abs(side) < 0.3 ? (Double(labelPoint.y) > HUDModel.middle ? 4 : -4) : 0))
             }
@@ -338,11 +350,13 @@ struct RedAlertView: View {
                     blade.stroke(s.on ? Self.red : Self.red.opacity(0.45), lineWidth: 1.4)
                     AnnularSector(start: s.angle - 4, end: s.angle + 4, inner: 208, outer: 213)
                         .fill(s.on ? Self.amber : Self.red.opacity(0.5))
-                    SlotGlyph(symbol: s.slot.symbol, size: 19, color: s.on ? .white : Color(hex: "#FFB3BA"))
-                        .position(canvasPoint(178, s.angle))
-                    SlotLabel(text: s.slot.name, on: s.on, size: 9.5, width: min(84, 2 * .pi * 150 / Double(n) - 6),
-                              font: .monospaced, uppercase: true, offColor: Color(hex: "#FFB3BA"))
-                        .position(canvasPoint(148, s.angle))
+                    VStack(spacing: 4) {
+                        SlotGlyph(symbol: s.slot.symbol, size: 19, color: s.on ? .white : Color(hex: "#FFB3BA"))
+                        SlotLabel(text: s.slot.name, on: s.on, size: 9.5, width: min(76, 2 * .pi * 165 / Double(n) - 10),
+                                  font: .monospaced, uppercase: true, offColor: Color(hex: "#FFB3BA"))
+                        SlotKeyCap(index: s.index, on: s.on, tint: Color(hex: "#FFB3BA"))
+                    }
+                    .position(canvasPoint(166, s.angle))
                 }
                 .shadow(color: s.on ? Self.red.opacity(0.8) : .clear, radius: 10)
             }

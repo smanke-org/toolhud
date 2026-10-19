@@ -277,6 +277,39 @@ struct SlotLabel: View {
     }
 }
 
+/// The number key that picks a button, drawn as a small keycap: 1–9, then 0 for the tenth.
+struct SlotKeyCap: View {
+    let index: Int
+    var on = false
+    var tint: Color = .white
+
+    static func key(for index: Int) -> String? {
+        switch index {
+        case 0..<9: return "\(index + 1)"
+        case 9: return "0"
+        default: return nil
+        }
+    }
+
+    var body: some View {
+        if let key = Self.key(for: index) {
+            let shape = RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+            Text(key)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(on ? Color.white : tint.opacity(0.85))
+                .frame(minWidth: 16, minHeight: 15)
+                .background(shape.fill(tint.opacity(on ? 0.3 : 0.13)))
+                .overlay(shape.strokeBorder(tint.opacity(on ? 0.45 : 0.22), lineWidth: 0.5))
+                // A thicker bottom edge, like a key's front lip.
+                .overlay(alignment: .bottom) {
+                    shape.fill(tint.opacity(on ? 0.4 : 0.2)).frame(height: 1.5).padding(.horizontal, 1.5)
+                }
+                .accessibilityLabel("Key \(key)")
+        }
+    }
+}
+
 extension Color {
     init(hex: String) {
         let c = SlotColor(hex: hex) ?? .neutral
