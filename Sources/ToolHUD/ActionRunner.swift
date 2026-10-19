@@ -240,6 +240,7 @@ enum Toast {
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        AppAppearance.followSystem(panel)
         return panel
     }
 }

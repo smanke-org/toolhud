@@ -283,6 +283,7 @@ final class HUDController {
         host.sizingOptions = []
         panel.contentView = host
         panel.onKey = { event in HUDController.shared.key(event) }
+        AppAppearance.followSystem(panel)
         return panel
     }
 
