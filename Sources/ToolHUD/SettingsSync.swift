@@ -73,7 +73,7 @@ final class SettingsSync {
 
     /// Settings that follow the user between Macs.
     static var syncedKeys: [String] {
-        Preferences.keys + ["showInDock", "showInMenuBar", AppAppearance.key, UpdatePolicy.key,
+        Preferences.keys + ["showInDock", "showInMenuBar", MenuHubHost.key, AppAppearance.key, UpdatePolicy.key,
          UpdateInterval.valueKey, UpdateInterval.unitKey]
     }
 
@@ -316,6 +316,7 @@ final class SettingsSync {
         var settings = Preferences.shared.snapshot
         settings["showInDock"] = AppPresence.showInDock
         settings["showInMenuBar"] = AppPresence.showInMenuBar
+        settings[MenuHubHost.key] = MenuHubHost.isEnabled
         settings[AppAppearance.key] = AppAppearance.current.rawValue
         settings[UpdatePolicy.key] = UpdatePolicy.current.rawValue
         settings[UpdateInterval.valueKey] = UpdateInterval.current.value

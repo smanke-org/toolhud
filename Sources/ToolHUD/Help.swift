@@ -138,6 +138,13 @@ enum Help {
             .tip("Near a screen edge, the HUD moves inward so every button stays on screen."),
         ]),
 
+        HelpTopic(id: "app-menus", title: "Your Apps' Menus", symbol: "menubar.rectangle", blocks: [
+            .text("While ToolHUD runs, your other apps can leave the menu bar and live in ToolHUD's menu instead. Each one becomes a submenu under ToolHUD's icon, with the same items as its own menu, and its row shows the app's menu bar icon, so a warning badge still shows."),
+            .text("Apps whose icon opens a panel, such as NetworkToggle, StayMounted and DiskLens, list their main actions there, plus a way to the full panel."),
+            .text("Turn it on or off with \"Gather my other apps' menus here\" in Settings › General. Each app also has \"Put in ToolHUD's menu while ToolHUD is running\" in its own Settings, to keep just that one in the menu bar."),
+            .tip("If ToolHUD quits, or its own menu bar icon is turned off, every app's icon comes back right away."),
+        ]),
+
         HelpTopic(id: "sync", title: "Sync and Settings", symbol: "icloud", blocks: [
             .text("Turn on \"Sync settings with your other Macs\" in Settings › General to share your buttons, look, shortcut and triggers through iCloud Drive. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
             .text("Show in Dock and Show in menu bar choose where ToolHUD appears. With both off, open ToolHUD again from Finder or Spotlight to reach Settings."),

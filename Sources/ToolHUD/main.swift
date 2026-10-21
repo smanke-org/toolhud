@@ -44,8 +44,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MouseTriggers.shared.apply()
 
         setUpStatusItem()
+        MenuHubHost.shared.apply()
         NotificationCenter.default.addObserver(forName: AppPresence.menuBarDidChange, object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { [weak self] in self?.statusItem?.isVisible = AppPresence.showInMenuBar }
+            MainActor.assumeIsolated { [weak self] in
+                self?.statusItem?.isVisible = AppPresence.showInMenuBar
+                // With no icon of its own, ToolHUD gives the other apps theirs back.
+                MenuHubHost.shared.apply()
+            }
         }
         // An app installed or updated while ToolHUD runs shows up the next time it's needed.
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didLaunchApplicationNotification,
@@ -76,6 +81,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showSettings()
         return true
     }
+
+    func applicationWillTerminate(_ notification: Notification) { MenuHubHost.shared.stop() }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
@@ -120,6 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             warn.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
             menu.addItem(warn)
         }
+        MenuHubHost.shared.addItems(to: menu)
 
         menu.addItem(.separator())
         let helpEntry = item("\(AppInfo.name) Help", #selector(showHelp))

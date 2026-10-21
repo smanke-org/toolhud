@@ -240,6 +240,15 @@ struct GeneralSettings: View {
                     Text(AppPresence.hiddenEverywhereNote(appName: "ToolHUD", settingsName: "Settings"))
                         .font(.callout).foregroundStyle(.secondary)
                 }
+                Toggle(isOn: $presence.gatherAppMenus) {
+                    Text("Gather my other apps’ menus here")
+                    Text("While ToolHUD runs, apps such as WindowKeeper and NetworkToggle leave the menu bar and show their menus as submenus of ToolHUD’s. Each app can stay out in its own Settings. Needs ToolHUD’s menu bar icon.")
+                }
+                .disabled(!presence.showInMenuBar)
+                if presence.gatherAppMenus && presence.showInMenuBar {
+                    let names = MenuHubHost.shared.guests().map(MenuHubHost.name(of:))
+                    LabeledContent("In ToolHUD’s menu now", value: names.isEmpty ? "None running" : names.formatted(.list(type: .and)))
+                }
             }
             Section {
                 Toggle("Open ToolHUD at login", isOn: Binding(get: { login.isEnabled }, set: { login.set($0) }))
@@ -476,10 +485,16 @@ final class PresenceSettings {
         didSet { AppPresence.showInMenuBar = showInMenuBar }
     }
 
+    var gatherAppMenus = MenuHubHost.isEnabled {
+        didSet { MenuHubHost.isEnabled = gatherAppMenus }
+    }
+
     /// Follows choices that arrived from another Mac.
     func reload() {
         if showInDock != AppPresence.showInDock { showInDock = AppPresence.showInDock }
         if showInMenuBar != AppPresence.showInMenuBar { showInMenuBar = AppPresence.showInMenuBar }
+        if gatherAppMenus != MenuHubHost.isEnabled { gatherAppMenus = MenuHubHost.isEnabled }
+        MenuHubHost.shared.apply()
         // The status item follows the notification, which the setter only posts on a change.
         NotificationCenter.default.post(name: AppPresence.menuBarDidChange, object: nil)
     }

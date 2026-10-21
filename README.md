@@ -86,6 +86,15 @@ Settings › Appearance offers ten visualizations, each drawn live in Settings:
 Opacity, size (small, medium, large), where it opens (pointer or screen center), a sound and a
 trackpad haptic are adjustable.
 
+## Your apps' menus
+
+While ToolHUD runs, our other apps can leave the menu bar and live in ToolHUD's menu instead:
+each becomes a submenu under ToolHUD's icon, with the same items as its own menu. Apps whose
+icon opens a panel (NetworkToggle, StayMounted, DiskLens, AudioLens) list their main actions
+and open the full panel from there. Turn it off with "Gather my other apps' menus here" in
+Settings › General, or keep one app out with the checkbox in its own Settings. If ToolHUD
+quits, the icons come back right away.
+
 ## Sync
 
 With "Sync settings with your other Macs" on (Settings › General), your buttons, look,
