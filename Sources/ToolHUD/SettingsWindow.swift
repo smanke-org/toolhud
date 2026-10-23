@@ -141,7 +141,7 @@ struct AppearanceSettings: View {
                 .padding(.vertical, 4)
             }
             Section {
-                Toggle("Add a button pad to the Halo", isOn: $prefs.padEnabled)
+                Toggle("Add a button pad", isOn: $prefs.padEnabled)
                 if prefs.padEnabled {
                     Picker("Position", selection: $prefs.padPosition) {
                         ForEach(PadPosition.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -156,9 +156,7 @@ struct AppearanceSettings: View {
             } header: {
                 Text("Button pad")
             } footer: {
-                Text(prefs.visualization == .halo
-                     ? "Up to 8 more buttons beside the halo: in a column on the left or right, in a row above or below. Press A, S, D, F and so on to run them, and choose what they do in Buttons."
-                     : "The button pad goes with the Halo look. Choose Halo above to see it.")
+                Text("Up to 8 more buttons beside the HUD, drawn to match its look: in a column on the left or right, in a row above or below. Press A, S, D, F and so on to run them, and choose what they do in Buttons.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {

@@ -16,7 +16,7 @@ final class Preferences {
     var slotCount: Int = DefaultRing.defaultCount { didSet { save(slotCount, "slotCount") } }
 
     // MARK: Button pad
-    /// Extra buttons in a tray beside the Halo. Like `slots`, always eight, of which the
+    /// Extra buttons in a tray beside the look. Like `slots`, always eight, of which the
     /// first `padCount` show.
     var padEnabled: Bool = false { didSet { save(padEnabled, "padEnabled") } }
     var padPosition: PadPosition = .right { didSet { save(padPosition.rawValue, "padPosition") } }

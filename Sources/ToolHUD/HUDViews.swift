@@ -17,7 +17,7 @@ struct HUDRootView: View {
             HUDDrawing(model: model)
                 .offset(x: -half - box.minX, y: -half - box.minY)
             if model.pad != nil {
-                HaloPadView(model: model, origin: HUDPoint(box.minX, box.minY))
+                ButtonPadView(model: model, origin: HUDPoint(box.minX, box.minY))
             }
         }
         .frame(width: box.width, height: box.height, alignment: .topLeading)

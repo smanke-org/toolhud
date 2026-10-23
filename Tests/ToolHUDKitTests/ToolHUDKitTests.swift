@@ -357,46 +357,61 @@ private func usKey(_ c: Character) -> (keyCode: UInt16, shift: Bool)? {
     }
 }
 
-@Test func everyPadButtonIsHitAtItsCoinAndNotBetween() {
-    for position in PadPosition.allCases {
-        for count in DefaultPad.minCount...DefaultPad.maxCount {
-            let coins = HUDLayout.padCoins(count: count, position: position)
-            #expect(coins.count == count)
-            for (i, c) in coins.enumerated() {
-                #expect(HUDLayout.padButton(at: c, count: count, position: position) == i, "\(position) \(count) \(i)")
+/// Every look, side and size of pad, with the ring's size where it changes the look.
+private func everyPad() -> [PadSpec] {
+    Visualization.allCases.flatMap { look in
+        [2, 8, 12].flatMap { ring in
+            PadPosition.allCases.flatMap { position in
+                (DefaultPad.minCount...DefaultPad.maxCount).map { PadSpec(look: look, ringCount: ring, position: position, count: $0) }
             }
-            // Far from the tray, nothing.
-            #expect(HUDLayout.padButton(at: HUDPoint(0, 0), count: count, position: position) == nil)
         }
     }
 }
 
-@Test func padsRunInAColumnBesideAndARowAboveOrBelow() {
-    let right = HUDLayout.padCoins(count: 4, position: .right)
-    #expect(Set(right.map(\.x)).count == 1 && right[0].y < right[1].y)
-    #expect(right.allSatisfy { $0.x > 210 })
-    let left = HUDLayout.padCoins(count: 4, position: .left)
-    #expect(left.allSatisfy { $0.x < -210 })
-    let above = HUDLayout.padCoins(count: 4, position: .above)
-    #expect(Set(above.map(\.y)).count == 1 && above[0].x < above[1].x && above[0].y < -210)
-    let below = HUDLayout.padCoins(count: 4, position: .below)
-    #expect(below.allSatisfy { $0.y > 210 })
-    // Centered on the halo along the other axis.
-    #expect(abs(right[0].y + right[3].y) < 0.001 && abs(above[0].x + above[3].x) < 0.001)
+@Test func everyPadButtonIsHitAtItsCenter() {
+    for pad in everyPad() {
+        let items = HUDLayout.padItems(pad)
+        #expect(items.count == pad.count)
+        for (i, item) in items.enumerated() {
+            #expect(HUDLayout.padButton(at: item.center, in: pad) == i, "\(pad) \(i)")
+        }
+        #expect(HUDLayout.padButton(at: HUDPoint(0, 0), in: pad) == nil)
+    }
 }
 
-@Test func thePadNeverTouchesTheHaloOrItsButtons() {
-    for position in PadPosition.allCases {
-        let n = DefaultPad.maxCount
-        for i in 0..<n {
-            let f = HUDLayout.padButtonFrame(i, count: n, position: position)
-            // The frame's nearest point to the halo's center is outside the lit slice's reach.
-            let nx = max(abs(f.center.x) - f.width / 2, 0), ny = max(abs(f.center.y) - f.height / 2, 0)
-            #expect((nx * nx + ny * ny).squareRoot() > 210, "\(position) \(i)")
+@Test func padsRunInAColumnBesideAndARowAboveOrBelow() {
+    for look in Visualization.allCases {
+        func pad(_ position: PadPosition) -> [HUDPoint] {
+            HUDLayout.padItems(PadSpec(look: look, ringCount: 8, position: position, count: 4)).map(\.center)
+        }
+        let right = pad(.right), left = pad(.left), above = pad(.above), below = pad(.below)
+        #expect(right[0].y < right[1].y && right[1].y < right[2].y, "\(look)")
+        #expect(above[0].x < above[1].x && above[1].x < above[2].x, "\(look)")
+        #expect(right.allSatisfy { $0.x > 150 } && left.allSatisfy { $0.x < -150 }, "\(look)")
+        #expect(above.allSatisfy { $0.y < -100 } && below.allSatisfy { $0.y > 100 }, "\(look)")
+    }
+}
+
+@Test func thePadStaysClearOfItsLook() {
+    for pad in everyPad() {
+        let look = HUDLayout.lookExtent(pad.look, count: pad.ringCount)
+        let tray = HUDLayout.padTray(pad)
+        switch pad.position {
+        case .right: #expect(tray.center.x - tray.width / 2 > look.maxX, "\(pad)")
+        case .left: #expect(tray.center.x + tray.width / 2 < look.minX, "\(pad)")
+        case .above: #expect(tray.center.y + tray.height / 2 < look.minY, "\(pad)")
+        case .below: #expect(tray.center.y - tray.height / 2 > look.maxY, "\(pad)")
+        }
+        // Every button lies inside the tray.
+        for item in HUDLayout.padItems(pad) {
+            #expect(item.center.x - item.width / 2 >= tray.center.x - tray.width / 2 - 0.001, "\(pad)")
+            #expect(item.center.x + item.width / 2 <= tray.center.x + tray.width / 2 + 0.001, "\(pad)")
+            #expect(item.center.y - item.height / 2 >= tray.center.y - tray.height / 2 - 0.001, "\(pad)")
+            #expect(item.center.y + item.height / 2 <= tray.center.y + tray.height / 2 + 0.001, "\(pad)")
         }
         // A ring button's center never lands on the pad.
-        for c in HUDLayout.centers(for: .halo, count: 12) {
-            #expect(HUDLayout.padButton(at: c, count: n, position: position) == nil)
+        for c in HUDLayout.centers(for: pad.look, count: pad.ringCount) {
+            #expect(HUDLayout.padButton(at: c, in: pad) == nil, "\(pad)")
         }
     }
 }
@@ -404,17 +419,24 @@ private func usKey(_ c: Character) -> (keyCode: UInt16, shift: Bool)? {
 @Test func theDrawingGrowsToHoldThePad() {
     let plain = HUDLayout.drawingBounds(pad: nil)
     #expect(plain == HUDLayout.Bounds(minX: -300, minY: -300, maxX: 300, maxY: 300))
-    for position in PadPosition.allCases {
-        let box = HUDLayout.drawingBounds(pad: (position, 8))
+    for pad in everyPad() {
+        let box = HUDLayout.drawingBounds(pad: pad)
         #expect(box.minX <= -300 && box.minY <= -300 && box.maxX >= 300 && box.maxY >= 300)
-        for i in 0..<8 {
-            let f = HUDLayout.padButtonFrame(i, count: 8, position: position)
-            #expect(f.center.x - f.width / 2 >= box.minX && f.center.x + f.width / 2 <= box.maxX)
-            #expect(f.center.y - f.height / 2 >= box.minY && f.center.y + f.height / 2 <= box.maxY)
-        }
+        let tray = HUDLayout.padTray(pad)
+        #expect(tray.center.x - tray.width / 2 >= box.minX && tray.center.x + tray.width / 2 <= box.maxX, "\(pad)")
+        #expect(tray.center.y - tray.height / 2 >= box.minY && tray.center.y + tray.height / 2 <= box.maxY, "\(pad)")
     }
-    #expect(HUDLayout.drawingBounds(pad: (.right, 4)).maxX > 300)
-    #expect(HUDLayout.drawingBounds(pad: (.right, 4)).minX == -300)
+    let right = HUDLayout.drawingBounds(pad: PadSpec(look: .halo, ringCount: 8, position: .right, count: 4))
+    #expect(right.maxX > 300 && right.minX == -300)
+}
+
+@Test func nestedHiveCellsGoToTheNearestCell() {
+    let pad = PadSpec(look: .hive, ringCount: 8, position: .right, count: 4)
+    let items = HUDLayout.padItems(pad)
+    // Halfway between two nested cells' centers, nudged toward the second.
+    let a = items[0].center, b = items[1].center
+    let p = HUDPoint(a.x + (b.x - a.x) * 0.6, a.y + (b.y - a.y) * 0.6)
+    #expect(HUDLayout.padButton(at: p, in: pad) == 1)
 }
 
 @Test func clampingKeepsAOneSidedHUDOnScreen() {

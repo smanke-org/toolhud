@@ -153,7 +153,7 @@ public struct RingFile: Codable, Sendable {
     public var version = 1
     public var visualization: Visualization?
     public var slots: [Slot]
-    /// The Halo's button pad, when it's turned on. Older rings have none.
+    /// The button pad, when it's turned on. Older rings have none.
     public var pad: [Slot]?
     public var padPosition: PadPosition?
 

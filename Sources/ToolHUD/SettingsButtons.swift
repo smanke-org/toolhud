@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 // MARK: - Buttons
 
-/// The buttons on the HUD in order, and the one chosen beside the list. With the Halo's
+/// The buttons on the HUD in order, and the one chosen beside the list. With the
 /// button pad on, a switch above the list moves between the ring's buttons and the pad's.
 struct ButtonsSettings: View {
     @State private var prefs = Preferences.shared
@@ -517,7 +517,7 @@ struct TriggersSettings: View {
             } header: {
                 Text("Keyboard")
             } footer: {
-                Text("In the HUD, the number keys run buttons 1 to 9 and 0 runs button 10. The Halo's button pad runs on A, S, D, F, G, H, J and K. The arrow keys and Tab move between buttons, Return runs the lit one, and Esc closes the HUD.")
+                Text("In the HUD, the number keys run buttons 1 to 9 and 0 runs button 10. The button pad runs on A, S, D, F, G, H, J and K. The arrow keys and Tab move between buttons, Return runs the lit one, and Esc closes the HUD.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

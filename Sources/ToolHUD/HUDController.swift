@@ -54,10 +54,15 @@ final class HUDModel {
     /// The button the readout describes.
     var focus: Int? { fired ?? highlighted }
 
-    /// The pad, if it's on and this look has one (only the Halo does).
-    var pad: (position: PadPosition, count: Int)? {
-        guard visualization == .halo, let padPosition, !padSlots.isEmpty else { return nil }
-        return (padPosition, padSlots.count)
+    /// The pad, if it's on.
+    var pad: PadSpec? {
+        guard let padPosition, !padSlots.isEmpty else { return nil }
+        return PadSpec(look: visualization, ringCount: slots.count, position: padPosition, count: padSlots.count)
+    }
+
+    /// The key that runs a button: its number on the ring, its letter on the pad.
+    func keyName(of index: Int) -> String {
+        index < slots.count ? "\(index + 1)" : DefaultPad.keyLetters[min(index - slots.count, DefaultPad.keyLetters.count - 1)]
     }
 
     /// The ring's buttons and then the pad's.
@@ -383,7 +388,7 @@ final class HUDController {
             }()
             var points = [("button", targets[min(1, n - 1)]), ("empty", HUDPoint(0, -285))]
             if let pad = model.pad {
-                points.append(("pad button", HUDLayout.padCoins(count: pad.count, position: pad.position)[min(1, pad.count - 1)]))
+                points.append(("pad button", HUDLayout.padItems(pad)[min(1, pad.count - 1)].center))
             }
             for (label, p) in points {
                 DebugHooks.trace("\(label) at \(Int(center.x + p.x * scale)) \(Int(screen.frame.maxY - (center.y - p.y * scale)))")
@@ -405,7 +410,7 @@ final class HUDController {
 
     /// The button drawn under this point, if any.
     private func button(at local: HUDPoint) -> Int? {
-        if let pad = model.pad, let index = HUDLayout.padButton(at: local, count: pad.count, position: pad.position) {
+        if let pad = model.pad, let index = HUDLayout.padButton(at: local, in: pad) {
             return model.slots.count + index
         }
         let n = max(model.slots.count, 1)
@@ -461,7 +466,7 @@ final class HUDController {
         model.gearHovered = false
         let next = ((current + by) % n + n) % n
         setHighlight(next)
-        if model.visualization == .dial { model.turnDial(to: next) }
+        if model.visualization == .dial, next < model.slots.count { model.turnDial(to: next) }
     }
 
 

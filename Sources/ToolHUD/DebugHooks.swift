@@ -7,7 +7,7 @@ import ToolHUDKit
 ///
 ///   TOOLHUD_DEBUG_HUD=halo:0           opens that look with button 0 lit
 ///                                      (TOOLHUD_DEBUG_DELAY=<seconds> waits first, so another app can come forward)
-///   TOOLHUD_DEBUG_PAD=right:6          shows the Halo's button pad there with that many buttons;
+///   TOOLHUD_DEBUG_PAD=right:6          shows the button pad there with that many buttons;
 ///                                      button indexes past the ring's light pad buttons
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed

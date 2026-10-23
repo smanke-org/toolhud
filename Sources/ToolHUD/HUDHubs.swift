@@ -140,7 +140,7 @@ struct HiveView: View {
                     .padding(2)
                 VStack(spacing: 4) {
                     SlotGlyph(symbol: model.focusSlot?.symbol ?? "hexagon", size: 22, weight: .medium, color: Self.honey)
-                    Text(model.fired != nil ? "SENT" : model.gearHovered ? "SETUP" : model.highlighted.map { "SLOT \($0 + 1)" } ?? "HIVE")
+                    Text(model.fired != nil ? "SENT" : model.gearHovered ? "SETUP" : model.highlighted.map { "SLOT \(model.keyName(of: $0))" } ?? "HIVE")
                         .font(.system(size: 9.5, weight: .bold, design: .monospaced)).tracking(2).foregroundStyle(Self.honey)
                 }
                 .offset(y: -10) // room for the Settings gear below
