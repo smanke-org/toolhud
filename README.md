@@ -139,3 +139,7 @@ swift test       # ToolHUDKit unit tests
 
 The disk image's window layout ships as `Resources/dmg/DS_Store`. Capture it once with
 `Tools/capture_dmg_layout.sh .build/app/ToolHUD.app ToolHUD Resources/dmg/DS_Store`.
+
+## License
+
+© 2026 Steve Manke. All rights reserved.
