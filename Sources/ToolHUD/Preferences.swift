@@ -15,6 +15,14 @@ final class Preferences {
     var slots: [Slot] = DefaultRing.slots { didSet { saveCodable(slots, "slots") } }
     var slotCount: Int = DefaultRing.defaultCount { didSet { save(slotCount, "slotCount") } }
 
+    // MARK: Button pad
+    /// Extra buttons in a tray beside the Halo. Like `slots`, always eight, of which the
+    /// first `padCount` show.
+    var padEnabled: Bool = false { didSet { save(padEnabled, "padEnabled") } }
+    var padPosition: PadPosition = .right { didSet { save(padPosition.rawValue, "padPosition") } }
+    var padSlots: [Slot] = DefaultPad.slots { didSet { saveCodable(padSlots, "padSlots") } }
+    var padCount: Int = DefaultPad.defaultCount { didSet { save(padCount, "padCount") } }
+
     // MARK: Appearance
     var visualization: Visualization = .halo { didSet { save(visualization.rawValue, "visualization") } }
     /// How solid the HUD's surfaces are, 0.2–1. Labels stay fully opaque.
@@ -39,10 +47,13 @@ final class Preferences {
     /// The buttons on the HUD now.
     var visibleSlots: [Slot] { Array(slots.prefix(slotCount)) }
 
+    /// The pad's buttons now, whether or not the pad is on.
+    var visiblePadSlots: [Slot] { Array(padSlots.prefix(padCount)) }
+
     /// Every key this class writes, so a reset can clear them all.
     static let keys = [
         "slots", "slotCount", "visualization", "opacity", "hudSize", "hudAnchor", "playSound", "haptics",
-        "hotKey", "hotKeyMode", "mouseTrigger", "holdDelay",
+        "hotKey", "hotKeyMode", "mouseTrigger", "holdDelay", "padEnabled", "padPosition", "padSlots", "padCount",
     ]
 
     @ObservationIgnored private var loading = false
@@ -66,6 +77,14 @@ final class Preferences {
         while imported.count < DefaultRing.maxCount { imported.append(spare[imported.count]) }
         slots = imported
         if let viz = ring.visualization { visualization = viz }
+        if var pad = ring.pad {
+            padCount = min(max(pad.count, DefaultPad.minCount), DefaultPad.maxCount)
+            let spare = DefaultPad.slots
+            while pad.count < DefaultPad.maxCount { pad.append(spare[pad.count]) }
+            padSlots = pad
+            if let position = ring.padPosition { padPosition = position }
+            padEnabled = true
+        }
     }
 
     /// Every setting's current value, in the form UserDefaults stores it, defaults included.
@@ -78,6 +97,7 @@ final class Preferences {
             "opacity": opacity, "hudSize": size.rawValue, "hudAnchor": anchor.rawValue,
             "playSound": playSound, "haptics": haptics, "hotKey": data(hotKey),
             "hotKeyMode": hotKeyMode.rawValue, "mouseTrigger": mouseTrigger.rawValue, "holdDelay": holdDelay,
+            "padEnabled": padEnabled, "padPosition": padPosition.rawValue, "padSlots": data(padSlots), "padCount": padCount,
         ]
     }
 
@@ -101,6 +121,15 @@ final class Preferences {
         slots = Array(stored.prefix(DefaultRing.maxCount))
         let count = d.object(forKey: "slotCount") as? Int ?? DefaultRing.defaultCount
         slotCount = min(max(count, DefaultRing.minCount), DefaultRing.maxCount)
+
+        var storedPad: [Slot] = codable("padSlots", DefaultPad.slots)
+        let sparePad = DefaultPad.slots
+        while storedPad.count < DefaultPad.maxCount { storedPad.append(sparePad[storedPad.count]) }
+        padSlots = Array(storedPad.prefix(DefaultPad.maxCount))
+        let storedPadCount = d.object(forKey: "padCount") as? Int ?? DefaultPad.defaultCount
+        padCount = min(max(storedPadCount, DefaultPad.minCount), DefaultPad.maxCount)
+        padEnabled = bool("padEnabled", false)
+        padPosition = PadPosition(rawValue: d.string(forKey: "padPosition") ?? "") ?? .right
 
         visualization = Visualization(rawValue: d.string(forKey: "visualization") ?? "") ?? .halo
         opacity = min(max(double("opacity", Defaults.opacity), 0.2), 1)

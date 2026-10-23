@@ -24,6 +24,7 @@ Requires macOS 26 or later.
 | ⌃⌥⌘Space | Open the HUD at the pointer, then click a button. Press the shortcut again to close it. |
 | ⌥ + right-click | Open the HUD from the mouse, in any app. |
 | 1–9, 0 | Run button 1–10 while the HUD is open. |
+| A S D F G H J K | Run the Halo's button pad, first to last. |
 | ← → ↑ ↓, Tab | Move between buttons; Return runs the lit one. |
 | Esc | Close the HUD. |
 | ⚙ or , | Open Settings. Every look has a small gear; click it, or press comma. |
@@ -51,7 +52,8 @@ app's color) and one of two actions, chosen per button:
   with the same modifiers (⌘K then ⌘S). Return, Tab, the arrows, F-keys and the like are in
   the Special Keys menu.
 
-Rings can be exported to a `.toolhudring` file and imported again, to keep or to share.
+Rings can be exported to a `.toolhudring` file and imported again, to keep or to share. A
+ring file includes the button pad when it's on.
 
 ### For our other apps
 
@@ -82,6 +84,10 @@ Settings › Appearance offers ten visualizations, each drawn live in Settings:
   (crimson blades with hazard stripes), Constellation (stars joined by lines), Glass Pills
   (labeled pills) and Planetary (planets that stop drifting when you aim).
 - **Button hubs**: Command Deck (a panel of keycaps) and Hive (honeycomb cells).
+
+**Button pad (Halo):** for more buttons than the ring holds, add a tray of up to 8 round
+buttons beside the halo: a column on the left or right, or a row above or below. Its buttons
+have their own list under Pad in Settings › Buttons and run on A, S, D, F, G, H, J and K.
 
 Opacity, size (small, medium, large), where it opens (pointer or screen center), a sound and a
 trackpad haptic are adjustable.

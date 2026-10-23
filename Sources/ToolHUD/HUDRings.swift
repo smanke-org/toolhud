@@ -49,6 +49,98 @@ struct HaloView: View {
     }
 }
 
+/// The Halo's button pad: round buttons drawn like the halo's hub, in a tray that a short
+/// line ties to the halo. A column beside it, a row over or under it.
+struct HaloPadView: View {
+    let model: HUDModel
+    /// The HUD coordinates of this view's top-left corner.
+    let origin: HUDPoint
+
+    var body: some View {
+        if let pad = model.pad {
+            let open = model.entrance(delay: 0.05, duration: 0.3)
+            let tray = HUDLayout.padTray(count: pad.count, position: pad.position)
+            let coins = HUDLayout.padCoins(count: pad.count, position: pad.position)
+            let column = pad.position.isColumn
+            // Slides out from the halo as it opens.
+            let away = 18 * (1 - open)
+            let slide: CGSize = switch pad.position {
+            case .left: CGSize(width: away, height: 0)
+            case .right: CGSize(width: -away, height: 0)
+            case .above: CGSize(width: 0, height: away)
+            case .below: CGSize(width: 0, height: -away)
+            }
+            ZStack(alignment: .topLeading) {
+                tether(pad.position)
+                let shape = RoundedRectangle(cornerRadius: column ? 32 : 36, style: .continuous)
+                shape.fill(Color(white: 0.07).opacity(model.opacity))
+                    .overlay(shape.strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
+                    .frame(width: tray.width, height: tray.height)
+                    .position(at(tray.center))
+                ForEach(Array(model.padSlots.enumerated()), id: \.element.id) { j, slot in
+                    let index = model.slots.count + j
+                    let on = model.highlighted == index
+                    coin(slot, on: on, fired: model.fired == index)
+                        .position(at(coins[j]))
+                    if column {
+                        Text(slot.name)
+                            .font(.system(size: 12, weight: on ? .semibold : .medium))
+                            .foregroundStyle(on ? Color.white : .white.opacity(0.82))
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                            .frame(width: HUDLayout.padLabelWidth, alignment: .leading)
+                            .position(at(HUDPoint(coins[j].x + HUDLayout.padCoin / 2 + 10 + HUDLayout.padLabelWidth / 2, coins[j].y)))
+                        SlotKeyCap(index: index, label: DefaultPad.keyLetters[j], on: on)
+                            .position(at(HUDPoint(tray.center.x + tray.width / 2 - 14 - 8, coins[j].y)))
+                    } else {
+                        SlotLabel(text: slot.name, on: on, width: HUDLayout.padItemWidth - 4)
+                            .position(at(HUDPoint(coins[j].x, coins[j].y + HUDLayout.padCoin / 2 + 12)))
+                        SlotKeyCap(index: index, label: DefaultPad.keyLetters[j], on: on)
+                            .position(at(HUDPoint(coins[j].x, coins[j].y + HUDLayout.padCoin / 2 + 31)))
+                    }
+                }
+            }
+            .offset(slide)
+            .opacity(min(1, open * 1.4))
+        }
+    }
+
+    /// A HUD point in this view's own coordinates.
+    private func at(_ p: HUDPoint) -> CGPoint { CGPoint(x: p.x - origin.x, y: p.y - origin.y) }
+
+    /// The short line from the halo's rim to the tray.
+    private func tether(_ position: PadPosition) -> some View {
+        let start = HUDLayout.padTetherStart, end = HUDLayout.padGap
+        let (a, b): (HUDPoint, HUDPoint) = switch position {
+        case .left: (HUDPoint(-start, 0), HUDPoint(-end, 0))
+        case .right: (HUDPoint(start, 0), HUDPoint(end, 0))
+        case .above: (HUDPoint(0, -start), HUDPoint(0, -end))
+        case .below: (HUDPoint(0, start), HUDPoint(0, end))
+        }
+        return Path { p in
+            p.move(to: at(a))
+            p.addLine(to: at(b))
+        }
+        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+    }
+
+    /// A dark disc with a hairline and an inner ring, like the halo's hub; lit, it fills
+    /// with the button's color and glows like a lit slice.
+    private func coin(_ slot: Slot, on: Bool, fired: Bool) -> some View {
+        let color = slot.tint.color
+        return ZStack {
+            Circle()
+                .fill(on ? color.opacity(min(1, model.opacity * (fired ? 0.9 : 0.62))) : Color(white: 0.07).opacity(min(1, model.opacity + 0.12)))
+            Circle().strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+            Circle().strokeBorder(on ? color : Color.white.opacity(0.06), lineWidth: 1.5).padding(4)
+            SlotGlyph(symbol: slot.symbol, size: 16, color: on ? .white : color)
+        }
+        .frame(width: HUDLayout.padCoin, height: HUDLayout.padCoin)
+        .shadow(color: on ? color.opacity(0.6) : .clear, radius: 14)
+        .scaleEffect(fired ? 0.94 : on ? 1.1 : 1)
+        .animation(.spring(response: 0.22, dampingFraction: 0.6), value: on)
+    }
+}
+
 // MARK: - 3 · Orbit
 
 /// Round buttons that spring out from the pointer, joined to the hub.

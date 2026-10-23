@@ -9,6 +9,11 @@ import ToolHUDKit
 @MainActor
 final class HUDModel {
     var slots: [Slot] = []
+    /// The button pad's buttons; they follow the ring's in `highlighted` and `fired`, so pad
+    /// button 0 is `slots.count`.
+    var padSlots: [Slot] = []
+    /// Where the pad goes, or nil when it's off.
+    var padPosition: PadPosition?
     var visualization: Visualization = .halo
     var opacity = 0.8
     var highlighted: Int?
@@ -48,6 +53,21 @@ final class HUDModel {
 
     /// The button the readout describes.
     var focus: Int? { fired ?? highlighted }
+
+    /// The pad, if it's on and this look has one (only the Halo does).
+    var pad: (position: PadPosition, count: Int)? {
+        guard visualization == .halo, let padPosition, !padSlots.isEmpty else { return nil }
+        return (padPosition, padSlots.count)
+    }
+
+    /// The ring's buttons and then the pad's.
+    var buttonCount: Int { slots.count + (pad?.count ?? 0) }
+
+    func slot(at index: Int) -> Slot? {
+        if index < slots.count { return index >= 0 ? slots[index] : nil }
+        guard pad != nil, index - slots.count < padSlots.count else { return nil }
+        return padSlots[index - slots.count]
+    }
 
     /// Turns the Dial to `index` by the shorter direction.
     func turnDial(to index: Int) {
@@ -122,6 +142,8 @@ final class HUDController {
     fileprivate var keyTap: CFMachPort?
     private var keyTapSource: CFRunLoopSource?
     private var lastScroll = Date.distantPast
+    /// The keys that run pad buttons, A S D F… where the current keyboard layout puts them.
+    private var padKeyCodes = DefaultPad.usKeyCodes
 
     private static let tick = 1.0 / 60
 
@@ -159,7 +181,16 @@ final class HUDController {
         let prefs = Preferences.shared
         guard !prefs.visibleSlots.isEmpty else { return }
         model.slots = prefs.visibleSlots
+        model.padSlots = prefs.visiblePadSlots
+        model.padPosition = prefs.padEnabled ? prefs.padPosition : nil
         model.visualization = prefs.visualization
+        #if DEBUG
+        if let look = DebugHooks.look { model.visualization = look }
+        if let pad = DebugHooks.pad {
+            model.padPosition = pad.position
+            model.padSlots = Array(prefs.padSlots.prefix(pad.count))
+        }
+        #endif
         model.opacity = prefs.opacity
         model.highlighted = nil
         model.fired = nil
@@ -168,6 +199,11 @@ final class HUDController {
         model.dialIndex = 0
         closing = false
         keyboardPointer = nil
+        if model.pad != nil {
+            padKeyCodes = zip(DefaultPad.keyLetters, DefaultPad.usKeyCodes).map { letter, fallback in
+                KeyboardLayout.key(for: Character(letter.lowercased()))?.keyCode ?? fallback
+            }
+        }
         scale = prefs.size.scale
         model.scale = scale
 
@@ -177,12 +213,14 @@ final class HUDController {
         if let debugScreen = DebugHooks.screen { screen = debugScreen }
         #endif
         guard let screen else { return }
-        let side = HUDLayout.canvas * scale
-        let frameSide = side + HUDRootView.shadowMargin * 2
         let visible = screen.visibleFrame
         let wanted = prefs.anchor == .pointer && !forceCenter ? mouse : CGPoint(x: visible.midX, y: visible.midY)
-        // Kept far enough from the edges that every button is on screen.
-        let placed = HUDLayout.clamp(x: Double(wanted.x), y: Double(wanted.y), radius: side * 0.43,
+        // Kept far enough from the edges that every button, the pad's too, is on screen.
+        // The HUD's y runs down and the screen's up.
+        let keep = HUDLayout.visibleBounds(pad: model.pad, ringRadius: HUDLayout.canvas * 0.43)
+        let placed = HUDLayout.clamp(x: Double(wanted.x), y: Double(wanted.y),
+                                     extent: .init(minX: keep.minX * scale, minY: -keep.maxY * scale,
+                                                   maxX: keep.maxX * scale, maxY: -keep.minY * scale),
                                      bounds: (minX: Double(visible.minX), minY: Double(visible.minY),
                                               maxX: Double(visible.maxX), maxY: Double(visible.maxY)))
         center = CGPoint(x: placed.x, y: placed.y)
@@ -191,7 +229,11 @@ final class HUDController {
 
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        panel.setFrame(NSRect(x: center.x - frameSide / 2, y: center.y - frameSide / 2, width: frameSide, height: frameSide), display: false)
+        // The panel covers the drawing, which grows to one side for the pad, plus room
+        // for the shadow.
+        let box = HUDLayout.drawingBounds(pad: model.pad), margin = HUDRootView.shadowMargin
+        panel.setFrame(NSRect(x: center.x + box.minX * scale - margin, y: center.y - box.maxY * scale - margin,
+                              width: box.width * scale + margin * 2, height: box.height * scale + margin * 2), display: false)
         panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
 
@@ -269,7 +311,7 @@ final class HUDController {
 
     /// From the key tap: whether the HUD used the key.
     fileprivate func tappedKey(_ event: NSEvent) -> Bool {
-        guard isShowing, !closing, Self.hudKeys.contains(event.keyCode) else { return false }
+        guard isShowing, !closing, Self.hudKeys.contains(event.keyCode) || padIndex(forKey: event.keyCode) != nil else { return false }
         // Keys with ⌘ ⌥ ⌃ belong to someone else (the HUD's own shortcut among them);
         // Shift is allowed for Shift-Tab.
         guard event.modifierFlags.intersection([.command, .option, .control]).isEmpty else { return false }
@@ -318,8 +360,8 @@ final class HUDController {
     /// A negative `highlight` leaves the pointer in charge; -2 shows the gear lit.
     func debugShow(_ visualization: Visualization, highlight: Int) {
         DebugHooks.freezeHighlight = highlight != -1
+        DebugHooks.look = visualization
         show(atScreenCenter: true)
-        model.visualization = visualization
         if highlight >= 0 { model.highlighted = highlight }
         if highlight == -2 { model.gearHovered = true }
         if visualization == .dial, highlight >= 0 { model.turnDial(to: highlight) }
@@ -339,7 +381,11 @@ final class HUDController {
                 default: return HUDLayout.centers(for: visualization, count: n, phase: model.phase)
                 }
             }()
-            for (label, p) in [("button", targets[min(1, n - 1)]), ("empty", HUDPoint(0, -285))] {
+            var points = [("button", targets[min(1, n - 1)]), ("empty", HUDPoint(0, -285))]
+            if let pad = model.pad {
+                points.append(("pad button", HUDLayout.padCoins(count: pad.count, position: pad.position)[min(1, pad.count - 1)]))
+            }
+            for (label, p) in points {
                 DebugHooks.trace("\(label) at \(Int(center.x + p.x * scale)) \(Int(screen.frame.maxY - (center.y - p.y * scale)))")
             }
         }
@@ -359,6 +405,9 @@ final class HUDController {
 
     /// The button drawn under this point, if any.
     private func button(at local: HUDPoint) -> Int? {
+        if let pad = model.pad, let index = HUDLayout.padButton(at: local, count: pad.count, position: pad.position) {
+            return model.slots.count + index
+        }
         let n = max(model.slots.count, 1)
         return HUDLayout.button(at: local, in: model.visualization, count: model.slots.count,
                                 dialTurn: Double(model.dialIndex) * 360 / Double(n), phase: model.phase,
@@ -405,7 +454,7 @@ final class HUDController {
     }
 
     private func move(_ by: Int) {
-        let n = model.slots.count
+        let n = model.buttonCount
         guard n > 0 else { return }
         let current = model.highlighted ?? (by > 0 ? -1 : 0)
         keyboardPointer = NSEvent.mouseLocation
@@ -415,11 +464,22 @@ final class HUDController {
         if model.visualization == .dial { model.turnDial(to: next) }
     }
 
+
+    /// The pad button this key runs, if the pad is showing and has that many buttons.
+    private func padIndex(forKey code: UInt16) -> Int? {
+        guard let pad = model.pad, let index = padKeyCodes.firstIndex(of: code), index < pad.count else { return nil }
+        return index
+    }
+
     func key(_ event: NSEvent) {
         guard isShowing, !closing else { return }
         let code = event.keyCode
         if let digit = KeyCode.digits.firstIndex(of: code) {
             if digit < model.slots.count { fire(digit) } else { NSSound.beep() }
+            return
+        }
+        if let index = padIndex(forKey: code) {
+            fire(model.slots.count + index)
             return
         }
         switch code {
@@ -443,14 +503,13 @@ final class HUDController {
     /// Shows the button as chosen for a moment, closes the HUD, then runs it once the app
     /// underneath has the keyboard back.
     private func fire(_ index: Int) {
-        guard index < model.slots.count, !closing else { return }
+        guard let slot = model.slot(at: index), !closing else { return }
         closing = true
         model.highlighted = index
         model.fired = index
         model.firedAt = model.time
         lastUsed = Date()
         if Preferences.shared.playSound { NSSound(named: "Pop")?.play() }
-        let slot = model.slots[index]
         let hold = model.visualization.fireDuration
         DispatchQueue.main.asyncAfter(deadline: .now() + hold) {
             MainActor.assumeIsolated {

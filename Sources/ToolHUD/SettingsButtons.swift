@@ -5,49 +5,91 @@ import UniformTypeIdentifiers
 
 // MARK: - Buttons
 
-/// The buttons on the HUD in order, and the one chosen beside the list.
+/// The buttons on the HUD in order, and the one chosen beside the list. With the Halo's
+/// button pad on, a switch above the list moves between the ring's buttons and the pad's.
 struct ButtonsSettings: View {
     @State private var prefs = Preferences.shared
     @State private var directory = LensDirectory.shared
     @State private var selection: Int? = 0
     @State private var importError: String?
+    @State private var list: ButtonList = .ring
 
-    private var index: Int { min(selection ?? 0, prefs.slotCount - 1) }
+    enum ButtonList: String, CaseIterable {
+        case ring, pad
+        var title: String { rawValue.capitalized }
+    }
+
+    /// The pad's list, only while the pad is on.
+    private var editingPad: Bool { list == .pad && prefs.padEnabled }
+    private var count: Int { editingPad ? prefs.padCount : prefs.slotCount }
+    private var limits: ClosedRange<Int> {
+        editingPad ? DefaultPad.minCount...DefaultPad.maxCount : DefaultRing.minCount...DefaultRing.maxCount
+    }
+    private var index: Int { min(selection ?? 0, count - 1) }
 
     private var slot: Binding<Slot> {
-        Binding(get: { prefs.slots[index] }, set: { prefs.slots[index] = $0 })
+        if editingPad {
+            return Binding(get: { prefs.padSlots[index] }, set: { prefs.padSlots[index] = $0 })
+        }
+        return Binding(get: { prefs.slots[index] }, set: { prefs.slots[index] = $0 })
+    }
+
+    private func setCount(_ value: Int) {
+        if editingPad { prefs.padCount = value } else { prefs.slotCount = value }
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             VStack(spacing: 0) {
-                List(selection: $selection) {
-                    ForEach(Array(prefs.visibleSlots.enumerated()), id: \.element.id) { i, item in
-                        SlotRow(number: i + 1, slot: item).tag(i)
+                if prefs.padEnabled {
+                    Picker("", selection: $list) {
+                        ForEach(ButtonList.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
-                    .onMove { from, to in prefs.slots.move(fromOffsets: from, toOffset: to) }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .padding(8)
+                    Divider()
+                }
+                List(selection: $selection) {
+                    if editingPad {
+                        ForEach(Array(prefs.visiblePadSlots.enumerated()), id: \.element.id) { i, item in
+                            SlotRow(key: DefaultPad.keyLetters[i], slot: item).tag(i)
+                        }
+                        .onMove { from, to in prefs.padSlots.move(fromOffsets: from, toOffset: to) }
+                    } else {
+                        ForEach(Array(prefs.visibleSlots.enumerated()), id: \.element.id) { i, item in
+                            SlotRow(key: "\(i + 1)", slot: item).tag(i)
+                        }
+                        .onMove { from, to in prefs.slots.move(fromOffsets: from, toOffset: to) }
+                    }
                 }
                 Divider()
                 HStack {
-                    Button { prefs.slotCount = max(DefaultRing.minCount, prefs.slotCount - 1) } label: { Image(systemName: "minus") }
-                        .disabled(prefs.slotCount <= DefaultRing.minCount)
+                    Button { setCount(max(limits.lowerBound, count - 1)) } label: { Image(systemName: "minus") }
+                        .disabled(count <= limits.lowerBound)
                         .help("Remove the last button")
-                    Button { prefs.slotCount = min(DefaultRing.maxCount, prefs.slotCount + 1); selection = prefs.slotCount - 1 } label: {
+                    Button { setCount(min(limits.upperBound, count + 1)); selection = count - 1 } label: {
                         Image(systemName: "plus")
                     }
-                    .disabled(prefs.slotCount >= DefaultRing.maxCount)
+                    .disabled(count >= limits.upperBound)
                     .help("Add a button")
                     Spacer()
-                    Text("\(prefs.slotCount) of 12").font(.caption).foregroundStyle(.secondary)
+                    Text("\(count) of \(limits.upperBound)").font(.caption).foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
                 .padding(8)
             }
             .frame(width: 240)
             Divider()
-            SlotEditor(slot: slot, number: index + 1, reset: { prefs.slots[index] = DefaultRing.slots[index] },
+            SlotEditor(slot: slot,
+                       title: editingPad ? "Pad button \(DefaultPad.keyLetters[index])" : "Button \(index + 1)",
+                       reset: {
+                           if editingPad { prefs.padSlots[index] = DefaultPad.slots[index] } else { prefs.slots[index] = DefaultRing.slots[index] }
+                       },
                        importRing: importRing, exportRing: exportRing, importError: importError)
         }
+        .onChange(of: list) { _, _ in selection = 0 }
+        .onChange(of: prefs.padEnabled) { _, on in if !on { list = .ring; selection = 0 } }
         #if DEBUG
         .onAppear { if let button = DebugHooks.selectedButton { selection = button } }
         #endif
@@ -59,7 +101,10 @@ struct ButtonsSettings: View {
         panel.allowedContentTypes = [UTType(filenameExtension: RingFile.fileExtension) ?? .json]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            try RingFile(visualization: prefs.visualization, slots: prefs.visibleSlots).encoded().write(to: url, options: .atomic)
+            let ring = RingFile(visualization: prefs.visualization, slots: prefs.visibleSlots,
+                                pad: prefs.padEnabled ? prefs.visiblePadSlots : nil,
+                                padPosition: prefs.padEnabled ? prefs.padPosition : nil)
+            try ring.encoded().write(to: url, options: .atomic)
         } catch {
             importError = "The ring couldn't be saved: \(error.localizedDescription)"
         }
@@ -72,6 +117,7 @@ struct ButtonsSettings: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             prefs.adopt(try RingFile.decode(Data(contentsOf: url)))
+            list = .ring
             selection = 0
             importError = nil
         } catch {
@@ -81,7 +127,8 @@ struct ButtonsSettings: View {
 }
 
 struct SlotRow: View {
-    let number: Int
+    /// The key that runs it in the HUD.
+    let key: String
     let slot: Slot
 
     var body: some View {
@@ -95,7 +142,7 @@ struct SlotRow: View {
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
-            Text("\(number)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            Text(key).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
     }
@@ -104,7 +151,7 @@ struct SlotRow: View {
 /// Everything about one button.
 struct SlotEditor: View {
     @Binding var slot: Slot
-    let number: Int
+    let title: String
     let reset: () -> Void
     let importRing: () -> Void
     let exportRing: () -> Void
@@ -116,7 +163,7 @@ struct SlotEditor: View {
 
     var body: some View {
         Form {
-            Section("Button \(number)") {
+            Section(title) {
                 TextField("Name", text: $slot.name)
                 LabeledContent("Symbol") {
                     HStack {
@@ -185,7 +232,7 @@ struct SlotEditor: View {
                     Text(importError).font(.callout).foregroundStyle(.red)
                 }
             } footer: {
-                Text("A ring file holds your buttons and the HUD's look, to keep or to share with someone else.")
+                Text("A ring file holds your buttons, the button pad and the HUD's look, to keep or to share with someone else.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -470,7 +517,7 @@ struct TriggersSettings: View {
             } header: {
                 Text("Keyboard")
             } footer: {
-                Text("In the HUD, the number keys run buttons 1 to 9 and 0 runs button 10. The arrow keys and Tab move between buttons, Return runs the lit one, and Esc closes the HUD.")
+                Text("In the HUD, the number keys run buttons 1 to 9 and 0 runs button 10. The Halo's button pad runs on A, S, D, F, G, H, J and K. The arrow keys and Tab move between buttons, Return runs the lit one, and Esc closes the HUD.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

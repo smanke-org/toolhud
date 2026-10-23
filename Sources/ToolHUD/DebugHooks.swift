@@ -7,6 +7,8 @@ import ToolHUDKit
 ///
 ///   TOOLHUD_DEBUG_HUD=halo:0           opens that look with button 0 lit
 ///                                      (TOOLHUD_DEBUG_DELAY=<seconds> waits first, so another app can come forward)
+///   TOOLHUD_DEBUG_PAD=right:6          shows the Halo's button pad there with that many buttons;
+///                                      button indexes past the ring's light pad buttons
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
@@ -21,6 +23,17 @@ import ToolHUDKit
 @MainActor
 enum DebugHooks {
     static var freezeHighlight = false
+    /// The look `debugShow` asked for, used in place of the saved one.
+    static var look: Visualization?
+
+    /// A button pad to show whatever Settings say, without saving anything.
+    static var pad: (position: PadPosition, count: Int)? {
+        guard let spec = ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_PAD"] else { return nil }
+        let parts = spec.split(separator: ":")
+        guard let position = parts.first.flatMap({ PadPosition(rawValue: String($0)) }) else { return nil }
+        let count = parts.count > 1 ? Int(parts[1]) ?? DefaultPad.defaultCount : DefaultPad.defaultCount
+        return (position, min(max(count, DefaultPad.minCount), DefaultPad.maxCount))
+    }
 
     /// A lens app to treat as not installed, to see how Settings shows a missing app.
     static var missingApp: String? { ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_MISSING"] }

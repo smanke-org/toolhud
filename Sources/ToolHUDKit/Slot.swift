@@ -153,10 +153,15 @@ public struct RingFile: Codable, Sendable {
     public var version = 1
     public var visualization: Visualization?
     public var slots: [Slot]
+    /// The Halo's button pad, when it's turned on. Older rings have none.
+    public var pad: [Slot]?
+    public var padPosition: PadPosition?
 
-    public init(visualization: Visualization?, slots: [Slot]) {
+    public init(visualization: Visualization?, slots: [Slot], pad: [Slot]? = nil, padPosition: PadPosition? = nil) {
         self.visualization = visualization
         self.slots = slots
+        self.pad = pad
+        self.padPosition = padPosition
     }
 
     public static let fileExtension = "toolhudring"
@@ -184,11 +189,14 @@ public struct RingFile: Codable, Sendable {
             throw ReadError.notARing
         }
         guard !file.slots.isEmpty else { throw ReadError.empty }
-        file.slots = file.slots.prefix(DefaultRing.maxCount).map { slot in
+        func fresh(_ slot: Slot) -> Slot {
             var copy = slot
             copy.id = UUID()
             return copy
         }
+        file.slots = file.slots.prefix(DefaultRing.maxCount).map(fresh)
+        file.pad = file.pad.map { $0.prefix(DefaultPad.maxCount).map(fresh) }
+        if file.pad?.isEmpty == true { file.pad = nil }
         return file
     }
 }

@@ -141,6 +141,27 @@ struct AppearanceSettings: View {
                 .padding(.vertical, 4)
             }
             Section {
+                Toggle("Add a button pad to the Halo", isOn: $prefs.padEnabled)
+                if prefs.padEnabled {
+                    Picker("Position", selection: $prefs.padPosition) {
+                        ForEach(PadPosition.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    LabeledContent("Pad buttons") {
+                        Stepper(value: $prefs.padCount, in: DefaultPad.minCount...DefaultPad.maxCount) {
+                            Text("\(prefs.padCount)").monospacedDigit()
+                        }
+                    }
+                }
+            } header: {
+                Text("Button pad")
+            } footer: {
+                Text(prefs.visualization == .halo
+                     ? "Up to 8 more buttons beside the halo: in a column on the left or right, in a row above or below. Press A, S, D, F and so on to run them, and choose what they do in Buttons."
+                     : "The button pad goes with the Halo look. Choose Halo above to see it.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
                 LabeledContent("Number of buttons") {
                     Stepper(value: $prefs.slotCount, in: DefaultRing.minCount...DefaultRing.maxCount) {
                         Text("\(prefs.slotCount)").monospacedDigit()

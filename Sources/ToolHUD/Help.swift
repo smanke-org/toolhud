@@ -72,6 +72,7 @@ enum Help {
             .keys([
                 ("1 – 9", "Run button 1 to 9"),
                 ("0", "Run button 10"),
+                ("A S D F G H J K", "Run the Halo's button pad, first to last"),
                 ("← → ↑ ↓", "Light the next or previous button"),
                 ("Tab / ⇧Tab", "Light the next or previous button"),
                 ("Scroll", "Light the next or previous button (and turn the Dial look)"),
@@ -95,7 +96,9 @@ enum Help {
             .heading("Keystroke buttons"),
             .text("Turn on ⌘ ⌥ ⌃ ⇧ with the toggles, then type the keys: K means the K key. Type several keys to press them one after another. Special Keys adds keys you can't type, such as arrows, Return or [F5]. \"Send to\" picks the app that receives them."),
             .heading("Looks and sharing"),
-            .text("Each button has an SF Symbol icon (Choose… to browse) and a color; App color uses the app's own. Test This Button runs it without opening the HUD. Export Ring… saves your buttons and look to a ring file to keep or share; Import Ring… loads one."),
+            .text("Each button has an SF Symbol icon (Choose… to browse) and a color; App color uses the app's own. Test This Button runs it without opening the HUD. Export Ring… saves your buttons, button pad and look to a ring file to keep or share; Import Ring… loads one."),
+            .heading("The button pad"),
+            .text("With the Halo's button pad on, a Ring / Pad switch sits above the list. Pad holds the pad's own buttons, from 1 to 8, which run on A, S, D, F, G, H, J and K."),
         ]),
 
         HelpTopic(id: "apps", title: "Supported Apps", symbol: "app.badge", blocks: [
@@ -134,6 +137,8 @@ enum Help {
                 ("Open at", "The pointer or the center of the screen"),
                 ("Sound / Haptic", "A soft sound when a button runs; a trackpad tap as you move between buttons"),
             ]),
+            .heading("The Halo's button pad"),
+            .text("For more buttons than the ring holds, turn on \"Add a button pad to the Halo\" in Settings › Appearance. It adds up to 8 round buttons in a tray beside the halo: in a column on the left or right, or in a row above or below. Its buttons run on A, S, D, F, G, H, J and K, and you choose what they do under Pad in Settings › Buttons. Other looks don't show the pad."),
             .tip("The Dial look turns its bezel instead of lighting buttons: scroll or use the arrow keys to turn it."),
             .tip("Near a screen edge, the HUD moves inward so every button stays on screen."),
         ]),

@@ -10,17 +10,25 @@ struct HUDRootView: View {
     static let shadowMargin = 110.0
 
     var body: some View {
-        let side = HUDLayout.canvas
-        HUDDrawing(model: model)
-            .frame(width: side, height: side)
-            .scaleEffect(model.scale)
-            .frame(width: side * model.scale, height: side * model.scale)
-            // A tight contact shadow under a wide soft one, the same size at every Size
-            // setting. Drawn from the composited HUD so overlapping pieces cast one shadow.
-            .compositingGroup()
-            .shadow(color: .black.opacity(1.0), radius: 6)
-            .shadow(color: .black.opacity(0.8), radius: 50)
-            .frame(width: side * model.scale + Self.shadowMargin * 2, height: side * model.scale + Self.shadowMargin * 2)
+        let half = HUDLayout.canvas / 2
+        // The canvas, grown to one side when the Halo has its button pad.
+        let box = HUDLayout.drawingBounds(pad: model.pad)
+        ZStack(alignment: .topLeading) {
+            HUDDrawing(model: model)
+                .offset(x: -half - box.minX, y: -half - box.minY)
+            if model.pad != nil {
+                HaloPadView(model: model, origin: HUDPoint(box.minX, box.minY))
+            }
+        }
+        .frame(width: box.width, height: box.height, alignment: .topLeading)
+        .scaleEffect(model.scale)
+        .frame(width: box.width * model.scale, height: box.height * model.scale)
+        // A tight contact shadow under a wide soft one, the same size at every Size
+        // setting. Drawn from the composited HUD so overlapping pieces cast one shadow.
+        .compositingGroup()
+        .shadow(color: .black.opacity(1.0), radius: 6)
+        .shadow(color: .black.opacity(0.8), radius: 50)
+        .frame(width: box.width * model.scale + Self.shadowMargin * 2, height: box.height * model.scale + Self.shadowMargin * 2)
     }
 }
 
@@ -89,13 +97,14 @@ extension HUDModel {
         return min(max((time - firedAt) / duration, 0), 1)
     }
 
-    var focusSlot: Slot? { focus.flatMap { $0 < slots.count ? slots[$0] : nil } }
+    var focusSlot: Slot? { focus.flatMap { slot(at: $0) } }
 
     /// The readout's three lines for the button in focus.
     var readout: (title: String, app: String, detail: String) {
         if gearHovered && fired == nil { return ("Settings", "ToolHUD", "Buttons, looks and triggers") }
         guard let slot = focusSlot else {
-            return ("ToolHUD", "Click a button", "Esc closes · 1–\(min(slots.count, 9)) pick")
+            let letters = pad.map { $0.count == 1 ? " · A" : " · A–\(DefaultPad.keyLetters[$0.count - 1])" } ?? ""
+            return ("ToolHUD", "Click a button", "Esc closes · 1–\(min(slots.count, 9))\(letters) pick")
         }
         if fired != nil { return (slot.name, slot.appName ?? "Keystroke", "Running…") }
         return (slot.name, slot.appName ?? "Keystroke", slot.summary)
@@ -278,8 +287,10 @@ struct SlotLabel: View {
 }
 
 /// The number key that picks a button, drawn as a small keycap: 1–9, then 0 for the tenth.
+/// The button pad's letters pass `label` instead.
 struct SlotKeyCap: View {
     let index: Int
+    var label: String? = nil
     var on = false
     var tint: Color = .white
 
@@ -292,7 +303,7 @@ struct SlotKeyCap: View {
     }
 
     var body: some View {
-        if let key = Self.key(for: index) {
+        if let key = label ?? Self.key(for: index) {
             let shape = RoundedRectangle(cornerRadius: 3.5, style: .continuous)
             Text(key)
                 .font(.system(size: 10, weight: .semibold, design: .rounded))

@@ -342,3 +342,97 @@ private func usKey(_ c: Character) -> (keyCode: UInt16, shift: Bool)? {
     #expect(HUDLayout.pointsAtGear(HUDPoint(gear.x + 10, gear.y + 10), in: .halo, count: 8))
     #expect(!HUDLayout.pointsAtGear(HUDPoint(gear.x, gear.y + 30), in: .halo, count: 8))
 }
+
+// MARK: - The Halo's button pad
+
+@Test func defaultPadHasEightLensButtonsNotOnTheRing() {
+    let pad = DefaultPad.slots
+    #expect(pad.count == DefaultPad.maxCount)
+    #expect(DefaultPad.keyLetters.count == DefaultPad.maxCount && DefaultPad.usKeyCodes.count == DefaultPad.maxCount)
+    let ring = Set(DefaultRing.slots.map { "\($0.lensApp ?? "")/\($0.lensFeature ?? "")" })
+    for slot in pad {
+        let app = slot.lensApp.flatMap(LensCatalog.app)
+        #expect(app?.feature(slot.lensFeature ?? "") != nil)
+        #expect(!ring.contains("\(slot.lensApp ?? "")/\(slot.lensFeature ?? "")"))
+    }
+}
+
+@Test func everyPadButtonIsHitAtItsCoinAndNotBetween() {
+    for position in PadPosition.allCases {
+        for count in DefaultPad.minCount...DefaultPad.maxCount {
+            let coins = HUDLayout.padCoins(count: count, position: position)
+            #expect(coins.count == count)
+            for (i, c) in coins.enumerated() {
+                #expect(HUDLayout.padButton(at: c, count: count, position: position) == i, "\(position) \(count) \(i)")
+            }
+            // Far from the tray, nothing.
+            #expect(HUDLayout.padButton(at: HUDPoint(0, 0), count: count, position: position) == nil)
+        }
+    }
+}
+
+@Test func padsRunInAColumnBesideAndARowAboveOrBelow() {
+    let right = HUDLayout.padCoins(count: 4, position: .right)
+    #expect(Set(right.map(\.x)).count == 1 && right[0].y < right[1].y)
+    #expect(right.allSatisfy { $0.x > 210 })
+    let left = HUDLayout.padCoins(count: 4, position: .left)
+    #expect(left.allSatisfy { $0.x < -210 })
+    let above = HUDLayout.padCoins(count: 4, position: .above)
+    #expect(Set(above.map(\.y)).count == 1 && above[0].x < above[1].x && above[0].y < -210)
+    let below = HUDLayout.padCoins(count: 4, position: .below)
+    #expect(below.allSatisfy { $0.y > 210 })
+    // Centered on the halo along the other axis.
+    #expect(abs(right[0].y + right[3].y) < 0.001 && abs(above[0].x + above[3].x) < 0.001)
+}
+
+@Test func thePadNeverTouchesTheHaloOrItsButtons() {
+    for position in PadPosition.allCases {
+        let n = DefaultPad.maxCount
+        for i in 0..<n {
+            let f = HUDLayout.padButtonFrame(i, count: n, position: position)
+            // The frame's nearest point to the halo's center is outside the lit slice's reach.
+            let nx = max(abs(f.center.x) - f.width / 2, 0), ny = max(abs(f.center.y) - f.height / 2, 0)
+            #expect((nx * nx + ny * ny).squareRoot() > 210, "\(position) \(i)")
+        }
+        // A ring button's center never lands on the pad.
+        for c in HUDLayout.centers(for: .halo, count: 12) {
+            #expect(HUDLayout.padButton(at: c, count: n, position: position) == nil)
+        }
+    }
+}
+
+@Test func theDrawingGrowsToHoldThePad() {
+    let plain = HUDLayout.drawingBounds(pad: nil)
+    #expect(plain == HUDLayout.Bounds(minX: -300, minY: -300, maxX: 300, maxY: 300))
+    for position in PadPosition.allCases {
+        let box = HUDLayout.drawingBounds(pad: (position, 8))
+        #expect(box.minX <= -300 && box.minY <= -300 && box.maxX >= 300 && box.maxY >= 300)
+        for i in 0..<8 {
+            let f = HUDLayout.padButtonFrame(i, count: 8, position: position)
+            #expect(f.center.x - f.width / 2 >= box.minX && f.center.x + f.width / 2 <= box.maxX)
+            #expect(f.center.y - f.height / 2 >= box.minY && f.center.y + f.height / 2 <= box.maxY)
+        }
+    }
+    #expect(HUDLayout.drawingBounds(pad: (.right, 4)).maxX > 300)
+    #expect(HUDLayout.drawingBounds(pad: (.right, 4)).minX == -300)
+}
+
+@Test func clampingKeepsAOneSidedHUDOnScreen() {
+    let bounds = (minX: 0.0, minY: 0.0, maxX: 1000.0, maxY: 800.0)
+    let extent = HUDLayout.Bounds(minX: -100, minY: -100, maxX: 400, maxY: 100)
+    let p = HUDLayout.clamp(x: 900, y: 400, extent: extent, bounds: bounds)
+    #expect(p.x == 600 && p.y == 400)
+    let q = HUDLayout.clamp(x: 10, y: 10, extent: extent, bounds: bounds)
+    #expect(q.x == 100 && q.y == 100)
+}
+
+@Test func ringFilesCarryThePadAndOldOnesStillRead() throws {
+    let ring = RingFile(visualization: .halo, slots: Array(DefaultRing.slots.prefix(8)),
+                        pad: Array(DefaultPad.slots.prefix(3)), padPosition: .below)
+    let back = try RingFile.decode(ring.encoded())
+    #expect(back.pad?.map(\.name) == ring.pad?.map(\.name))
+    #expect(back.pad?.first?.id != ring.pad?.first?.id)
+    #expect(back.padPosition == .below)
+    let old = try RingFile.decode(RingFile(visualization: .halo, slots: DefaultRing.slots).encoded())
+    #expect(old.pad == nil && old.padPosition == nil)
+}
