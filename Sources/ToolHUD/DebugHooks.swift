@@ -9,6 +9,7 @@ import ToolHUDKit
 ///                                      (TOOLHUD_DEBUG_DELAY=<seconds> waits first, so another app can come forward)
 ///   TOOLHUD_DEBUG_PAD=right:6          shows the button pad there with that many buttons;
 ///                                      button indexes past the ring's light pad buttons
+///   TOOLHUD_DEBUG_SAMPLE_BUTTONS=1     shows the default ring and pad buttons instead of yours
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
@@ -25,6 +26,10 @@ enum DebugHooks {
     static var freezeHighlight = false
     /// The look `debugShow` asked for, used in place of the saved one.
     static var look: Visualization?
+
+    /// Shows the buttons a new install starts with, for screenshots that don't depend on
+    /// the user's own.
+    static var sampleButtons: Bool { ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_SAMPLE_BUTTONS"] != nil }
 
     /// A button pad to show whatever Settings say, without saving anything.
     static var pad: (position: PadPosition, count: Int)? {

@@ -191,9 +191,10 @@ final class HUDController {
         model.visualization = prefs.visualization
         #if DEBUG
         if let look = DebugHooks.look { model.visualization = look }
+        if DebugHooks.sampleButtons { model.slots = Array(DefaultRing.slots.prefix(DefaultRing.defaultCount)) }
         if let pad = DebugHooks.pad {
             model.padPosition = pad.position
-            model.padSlots = Array(prefs.padSlots.prefix(pad.count))
+            model.padSlots = Array((DebugHooks.sampleButtons ? DefaultPad.slots : prefs.padSlots).prefix(pad.count))
         }
         #endif
         model.opacity = prefs.opacity
