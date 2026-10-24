@@ -13,6 +13,9 @@ struct ButtonsSettings: View {
     @State private var selection: Int? = 0
     @State private var importError: String?
     @State private var list: ButtonList = .ring
+    /// The button the right-click menu or the Delete key asked to delete, while the
+    /// confirmation is up.
+    @State private var pendingDelete: Int?
 
     enum ButtonList: String, CaseIterable {
         case ring, pad
@@ -54,14 +57,27 @@ struct ButtonsSettings: View {
                     if editingPad {
                         ForEach(Array(prefs.visiblePadSlots.enumerated()), id: \.element.id) { i, item in
                             SlotRow(key: DefaultPad.keyLetters[i], slot: item).tag(i)
+                                .contextMenu { rowMenu(i) }
                         }
                         .onMove { from, to in prefs.padSlots.move(fromOffsets: from, toOffset: to) }
                     } else {
                         ForEach(Array(prefs.visibleSlots.enumerated()), id: \.element.id) { i, item in
                             SlotRow(key: "\(i + 1)", slot: item).tag(i)
+                                .contextMenu { rowMenu(i) }
                         }
                         .onMove { from, to in prefs.slots.move(fromOffsets: from, toOffset: to) }
                     }
+                }
+                .onDeleteCommand { if count > limits.lowerBound { pendingDelete = index } }
+                .alert(deleteTitle, isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {
+                    Button("Delete", role: .destructive) {
+                        if let i = pendingDelete { delete(i) }
+                        pendingDelete = nil
+                    }
+                    Button("Cancel", role: .cancel) { pendingDelete = nil }
+                        .keyboardShortcut(.defaultAction)
+                } message: {
+                    Text("Its action, symbol and color are removed, and the buttons after it move up.")
                 }
                 Divider()
                 HStack {
@@ -93,6 +109,48 @@ struct ButtonsSettings: View {
         #if DEBUG
         .onAppear { if let button = DebugHooks.selectedButton { selection = button } }
         #endif
+    }
+
+    // MARK: Right-click menu
+
+    @ViewBuilder
+    private func rowMenu(_ i: Int) -> some View {
+        Button("Test This Button") {
+            let toRun = editingPad ? prefs.padSlots[i] : prefs.slots[i]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                MainActor.assumeIsolated { ActionRunner.run(toRun) }
+            }
+        }
+        Button("Duplicate Button") { duplicate(i) }
+            .disabled(count >= limits.upperBound)
+        Divider()
+        Button("Delete Button…", role: .destructive) { pendingDelete = i }
+            .disabled(count <= limits.lowerBound)
+    }
+
+    private var deleteTitle: String {
+        guard let i = pendingDelete else { return "Delete this button?" }
+        let list = editingPad ? prefs.padSlots : prefs.slots
+        let name = list.indices.contains(i) ? list[i].name : "this button"
+        return "Delete “\(name)”?"
+    }
+
+    private func delete(_ i: Int) {
+        if editingPad {
+            SlotListEdit.delete(at: i, slots: &prefs.padSlots, count: &prefs.padCount, minCount: limits.lowerBound)
+        } else {
+            SlotListEdit.delete(at: i, slots: &prefs.slots, count: &prefs.slotCount, minCount: limits.lowerBound)
+        }
+        selection = min(selection ?? 0, count - 1)
+    }
+
+    private func duplicate(_ i: Int) {
+        if editingPad {
+            SlotListEdit.duplicate(at: i, slots: &prefs.padSlots, count: &prefs.padCount, maxCount: limits.upperBound)
+        } else {
+            SlotListEdit.duplicate(at: i, slots: &prefs.slots, count: &prefs.slotCount, maxCount: limits.upperBound)
+        }
+        selection = i + 1
     }
 
     private func exportRing() {

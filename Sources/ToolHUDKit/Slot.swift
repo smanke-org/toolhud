@@ -200,3 +200,28 @@ public struct RingFile: Codable, Sendable {
         return file
     }
 }
+
+/// Edits to a button list that keeps its full length (`slots` holds every place, the first
+/// `count` show), as the right-click menu in Settings › Buttons makes them.
+public enum SlotListEdit {
+    /// Removes the button at `index`. An empty button takes the free place at the end, so
+    /// the list keeps its length. Does nothing at the minimum.
+    public static func delete(at index: Int, slots: inout [Slot], count: inout Int, minCount: Int) {
+        guard count > minCount, slots.indices.contains(index), index < count else { return }
+        slots.remove(at: index)
+        slots.append(.empty())
+        count -= 1
+    }
+
+    /// Puts a copy of the button at `index` right after it, named "<name> copy". The last
+    /// hidden place makes room, so the list keeps its length. Does nothing at the maximum.
+    public static func duplicate(at index: Int, slots: inout [Slot], count: inout Int, maxCount: Int) {
+        guard count < maxCount, count < slots.count, slots.indices.contains(index), index < count else { return }
+        var copy = slots[index]
+        copy.id = UUID()
+        copy.name += " copy"
+        slots.insert(copy, at: index + 1)
+        slots.removeLast()
+        count += 1
+    }
+}

@@ -88,7 +88,7 @@ enum Help {
         ]),
 
         HelpTopic(id: "buttons", title: "Buttons", symbol: "square.grid.2x2", blocks: [
-            .text("Settings › Buttons lists the ring's buttons in order; button 1 sits at the top and the rest follow clockwise. Drag to reorder, and use + and − to set how many there are, from 2 to 12. Fewer buttons are faster to aim at."),
+            .text("Settings › Buttons lists the ring's buttons in order; button 1 sits at the top and the rest follow clockwise. Drag to reorder, and use + and − to set how many there are, from 2 to 12. Fewer buttons are faster to aim at. Right-click a button to test, duplicate or delete it (Delete asks first); the Delete key also deletes the selected button."),
             .heading("What a button can do"),
             .keys([
                 ("App feature", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens or another supported app"),

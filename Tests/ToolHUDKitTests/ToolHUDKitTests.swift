@@ -537,3 +537,32 @@ private func day(_ key: String) -> Date { ActivityLog.date(for: key, calendar: u
     #expect(parsed.sequence.display == "⇧⌘Space")
     #expect(parsed.unknown.isEmpty)
 }
+
+// MARK: - Button list edits
+
+private func names(_ n: Int) -> [Slot] { (0..<n).map { Slot(name: "B\($0)", symbol: "circle", mode: .keystroke) } }
+
+@Test func deletingAButtonKeepsTheListLength() {
+    var slots = names(12), count = 5
+    SlotListEdit.delete(at: 1, slots: &slots, count: &count, minCount: 2)
+    #expect(count == 4)
+    #expect(slots.count == 12)
+    #expect(slots.prefix(4).map(\.name) == ["B0", "B2", "B3", "B4"])
+    #expect(slots.last?.name == "New button")
+    count = 2
+    SlotListEdit.delete(at: 0, slots: &slots, count: &count, minCount: 2)
+    #expect(count == 2)
+    #expect(slots.first?.name == "B0")
+}
+
+@Test func duplicatingAButtonPutsTheCopyNext() {
+    var slots = names(12), count = 3
+    SlotListEdit.duplicate(at: 0, slots: &slots, count: &count, maxCount: 12)
+    #expect(count == 4)
+    #expect(slots.count == 12)
+    #expect(slots.prefix(4).map(\.name) == ["B0", "B0 copy", "B1", "B2"])
+    #expect(slots[0].id != slots[1].id)
+    count = 12
+    SlotListEdit.duplicate(at: 0, slots: &slots, count: &count, maxCount: 12)
+    #expect(count == 12)
+}
