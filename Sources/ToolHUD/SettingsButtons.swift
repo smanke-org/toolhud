@@ -346,6 +346,9 @@ struct KeystrokeFields: View {
     @State private var text = ""
     @State private var modifiers: KeyModifiers = []
     @State private var unknown: [String] = []
+    @FocusState private var keyFieldFocused: Bool
+    /// Records a shortcut pressed in the key field; a text field never sees ⌘, ⌥ or ⌃ keys.
+    @State private var recorder: Any?
 
     /// In the order the user reads them on the keyboard's left side.
     private static let toggles: [(modifier: KeyModifiers, symbol: String, name: String)] = [
@@ -393,7 +396,14 @@ struct KeystrokeFields: View {
                     .multilineTextAlignment(.leading)
                     .font(.system(.body, design: .monospaced))
                     .frame(width: 160)
-                    .onChange(of: text) { _, _ in save() }
+                    .focused($keyFieldFocused)
+                    .onChange(of: text) { _, new in
+                        // A typed space would be invisible in the field.
+                        let shown = KeySequence.showingSpaces(new)
+                        if shown != new { text = shown } else { save() }
+                    }
+                    .onChange(of: keyFieldFocused) { _, focused in focused ? startRecording() : stopRecording() }
+                    .onDisappear { stopRecording() }
                 Menu("Special Keys") {
                     ForEach(KeyNames.insertable, id: \.token) { key in
                         Button(key.title) { text += key.token }
@@ -412,7 +422,7 @@ struct KeystrokeFields: View {
                   systemImage: "exclamationmark.triangle")
                 .font(.callout).foregroundStyle(.orange)
         }
-        Text("Letters stand for their keys, so K is the K key; turn on Shift to press ⇧ with it. Type several keys to press them one after another, each with the modifiers above.")
+        Text("Letters stand for their keys, so K is the K key; turn on Shift to press ⇧ with it. Or press a shortcut such as ⇧⌘Space in the field to record it. Type several keys to press them one after another, each with the modifiers above.")
             .font(.caption).foregroundStyle(.secondary)
             .onAppear(perform: load)
             .onChange(of: slot.id) { _, _ in load() }
@@ -423,6 +433,29 @@ struct KeystrokeFields: View {
         modifiers = keys?.modifiers ?? []
         text = keys?.text ?? ""
         unknown = []
+    }
+
+    /// While the key field has focus, a key pressed with ⌘, ⌥ or ⌃ is recorded: its
+    /// modifiers set the toggles and the key is added to the field. ToolHUD's own shortcut
+    /// is paused meanwhile, so it can be recorded too; another app's global shortcut still
+    /// reaches that app first.
+    private func startRecording() {
+        guard recorder == nil else { return }
+        HotKeyCenter.shared.pause()
+        recorder = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard let key = Shortcut(event: event, requireModifier: true) else { return event }
+            modifiers = key.modifiers
+            text += KeySequence.token(for: key.key)
+            save()
+            return nil
+        }
+    }
+
+    private func stopRecording() {
+        guard let recorder else { return }
+        NSEvent.removeMonitor(recorder)
+        self.recorder = nil
+        HotKeyCenter.shared.resume()
     }
 
     private func save() {

@@ -528,3 +528,12 @@ private func day(_ key: String) -> Date { ActivityLog.date(for: key, calendar: u
     let back = try DeviceActivity.decoder.decode(DeviceActivity.self, from: SyncCrypto.open(sealed, using: key))
     #expect(back == record)
 }
+
+@Test func typedSpacesBecomeVisible() {
+    #expect(KeySequence.showingSpaces(" ") == "[Space]")
+    #expect(KeySequence.showingSpaces("K L") == "K[Space]L")
+    #expect(KeySequence.showingSpaces("[Page Up]") == "[Page Up]")
+    let parsed = KeySequence.parse(KeySequence.showingSpaces(" "), modifiers: [.command, .shift], lookup: { _ in nil })
+    #expect(parsed.sequence.display == "⇧⌘Space")
+    #expect(parsed.unknown.isEmpty)
+}

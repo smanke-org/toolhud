@@ -108,6 +108,18 @@ public struct KeySequence: Codable, Hashable, Sendable {
         key.count == 1 ? key : "[\(key)]"
     }
 
+    /// The field's text with each typed space written as "[Space]", which can be seen.
+    /// Spaces inside brackets ("[Page Up]") are names, and stay.
+    public static func showingSpaces(_ text: String) -> String {
+        var result = ""
+        var inBrackets = false
+        for c in text {
+            if c == "[" { inBrackets = true } else if c == "]" { inBrackets = false }
+            result += c == " " && !inBrackets ? "[Space]" : String(c)
+        }
+        return result
+    }
+
     /// Turns the field's text into keys. `lookup` finds the key that types a character on
     /// the current keyboard layout, and whether Shift is needed. Letters are the keys
     /// themselves, so "K" is the K key without Shift, as in a menu shortcut. Keys that

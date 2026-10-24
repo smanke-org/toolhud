@@ -20,6 +20,8 @@ import ToolHUDKit
 ///   TOOLHUD_DEBUG_HELP_TEST=<png path>   presses Help on every Settings pane, traces what opened,
 ///                                      renders Help (TOOLHUD_DEBUG_HELP_TOPIC) and Settings, then quits
 ///   TOOLHUD_DEBUG_BUTTON=<index>         starts Settings › Buttons on that button
+///   TOOLHUD_DEBUG_KEYS=<code>:<mods>,…   with TOOLHUD_DEBUG_SETTINGS=buttons on a keystroke button: clears the key
+///                                      field, sends each key to it (mods = NSEvent.ModifierFlags raw), traces the result
 ///   TOOLHUD_DEBUG_RUN_LENS=<bundle id>:<feature>  runs that lens action as a button would
 ///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
 ///                                      presses those keys, only if that app is in front
@@ -71,6 +73,39 @@ enum DebugHooks {
             try? handle.close()
         } else {
             FileManager.default.createFile(atPath: path, contents: line)
+        }
+    }
+
+    /// Waits for the keystroke editor's key field to get focus (focus it with accessibility),
+    /// then sends each key in turn to it, clearing it first, and traces what the field and
+    /// the button then hold.
+    static func typeIntoKeyField(_ spec: String, window: NSWindow) {
+        trace("waiting for key field focus")
+        let deadline = Date().addingTimeInterval(30)
+        while !(window.firstResponder is NSTextView), Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        }
+        guard let editor = window.firstResponder as? NSTextView else { trace("no focus"); return }
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+        for item in spec.split(separator: ",") {
+            let parts = item.split(separator: ":").compactMap { UInt($0) }
+            guard parts.count == 2 else { continue }
+            editor.selectAll(nil)
+            editor.insertText("", replacementRange: editor.selectedRange())
+            RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+            let flags = NSEvent.ModifierFlags(rawValue: parts[1])
+            let chars = parts[0] == 49 ? " " : (parts[0] == 40 ? "k" : "")
+            for type in [NSEvent.EventType.keyDown, .keyUp] {
+                if let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: 0,
+                                                windowNumber: window.windowNumber, context: nil, characters: chars,
+                                                charactersIgnoringModifiers: chars, isARepeat: false, keyCode: UInt16(parts[0])) {
+                    NSApp.sendEvent(event)
+                }
+            }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+            let slot = Preferences.shared.slots.first
+            trace("keys \(item): key=\(window.isKeyWindow) field=\"\(editor.string)\" presses=\(slot?.keySequence?.display ?? "-")")
         }
     }
 
@@ -184,6 +219,7 @@ enum DebugHooks {
                                 window.setFrame(target, display: true)
                                 window.makeKeyAndOrderFront(nil)
                                 trace("moved to \(window.frame) number=\(window.windowNumber) visible=\(window.isVisible) screen=\(String(describing: window.screen?.localizedName))")
+                                if let keys = env["TOOLHUD_DEBUG_KEYS"] { typeIntoKeyField(keys, window: window) }
                                 guard let snapshot = env["TOOLHUD_DEBUG_SNAPSHOT"] else { return }
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                                     MainActor.assumeIsolated {
