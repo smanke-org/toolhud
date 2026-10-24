@@ -47,6 +47,17 @@ import Testing
     #expect(LensCatalog.textLens.downloadURL == nil)
 }
 
+@Test func captureLensActionsUseItsScheme() {
+    let app = LensCatalog.captureLens
+    #expect(LensCatalog.app("com.smanke.CaptureLens") == app)
+    #expect(app.features.map(\.id) == ["capture", "screen", "window", "area", "recapture", "library"])
+    #expect(app.url(for: "capture")?.absoluteString == "capturelens://capture?source=toolhud")
+    #expect(app.downloadURL?.absoluteString == "https://github.com/smanke-org/CaptureLens/releases/latest")
+    let owner = LensCatalog.owner(of: Shortcut(keyCode: KeyCode.digits[3], modifiers: [.option, .shift, .command], key: "4"))
+    #expect(owner?.app.name == "CaptureLens")
+    #expect(owner?.feature.id == "capture")
+}
+
 // MARK: - Slots and rings
 
 @Test func defaultRingHasTwelveDistinctLensButtons() {

@@ -145,7 +145,29 @@ public enum LensCatalog {
         ],
         downloadURL: URL(string: "https://github.com/smanke-org/ExpansionLens/releases/latest"))
 
-    public static let builtIn: [LensApp] = [textLens, clickLens, pasteLens, diskLens, expansionLens]
+    private static func s(_ code: UInt16, _ key: String) -> Shortcut {
+        Shortcut(keyCode: code, modifiers: [.option, .shift, .command], key: key)
+    }
+
+    /// Needs CaptureLens 1.0.0 or later, the first version, which answers all of these.
+    public static let captureLens = LensApp(
+        id: "com.smanke.CaptureLens", name: "CaptureLens", scheme: "capturelens", color: SlotColor(hex: "#2E5BFF")!,
+        features: [
+            LensFeature(id: "capture", title: "Capture a window or an area", shortTitle: "Capture",
+                        symbol: "camera.viewfinder", shortcut: s(KeyCode.digits[3], "4")),
+            LensFeature(id: "screen", title: "Capture the whole screen", shortTitle: "Full screen", symbol: "display",
+                        shortcut: s(KeyCode.digits[2], "3")),
+            LensFeature(id: "window", title: "Capture a window", shortTitle: "Window", symbol: "macwindow",
+                        shortcut: s(KeyCode.digits[4], "5")),
+            LensFeature(id: "area", title: "Capture an area", shortTitle: "Area", symbol: "rectangle.dashed"),
+            LensFeature(id: "recapture", title: "Capture the same area again", shortTitle: "Capture again",
+                        symbol: "arrow.clockwise"),
+            LensFeature(id: "library", title: "Open the capture library", shortTitle: "Library",
+                        symbol: "photo.on.rectangle", shortcut: s(KeyCode.l, "L"), activates: true),
+        ],
+        downloadURL: URL(string: "https://github.com/smanke-org/CaptureLens/releases/latest"))
+
+    public static let builtIn: [LensApp] = [textLens, clickLens, pasteLens, diskLens, expansionLens, captureLens]
 
     public static func app(_ bundleID: String) -> LensApp? { builtIn.first { $0.id == bundleID } }
 

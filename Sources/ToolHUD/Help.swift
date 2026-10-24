@@ -91,7 +91,7 @@ enum Help {
             .text("Settings › Buttons lists the ring's buttons in order; button 1 sits at the top and the rest follow clockwise. Drag to reorder, and use + and − to set how many there are, from 2 to 12. Fewer buttons are faster to aim at. Right-click a button to test, duplicate or delete it (Delete asks first); the Delete key also deletes the selected button."),
             .heading("What a button can do"),
             .keys([
-                ("App feature", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens or another supported app"),
+                ("App feature", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens, CaptureLens or another supported app"),
                 ("Keystroke", "Press keys for you, in the app you were using or one you choose"),
             ]),
             .heading("Keystroke buttons"),
@@ -110,6 +110,7 @@ enum Help {
                 ("PasteLens", "Quick Paste, History, Stack, snippets"),
                 ("DiskLens", "Scan a disk, open DiskLens (1.0.7 or later)"),
                 ("ExpansionLens", "Quick search, new snippet, pause or resume"),
+                ("CaptureLens", "Capture the screen, a window or an area, capture again, open the library"),
                 ("M3 Tracker, NetworkToggle, StayMounted", "Their own actions, when installed in /Applications"),
             ]),
             .tip("Other apps can join by listing their actions in their Info.plist; ToolHUD finds them in /Applications."),
