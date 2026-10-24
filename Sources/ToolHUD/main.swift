@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         #endif
         if newInstall { SettingsSync.shared.adoptOnNewInstall() }
         SettingsSync.shared.start()
+        ActivitySync.shared.start()
 
         HUDController.shared.start()
         HotKeyCenter.shared.apply()
@@ -82,7 +83,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
-    func applicationWillTerminate(_ notification: Notification) { MenuHubHost.shared.stop() }
+    func applicationWillTerminate(_ notification: Notification) {
+        MenuHubHost.shared.stop()
+        ActivitySync.shared.flush()
+    }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 

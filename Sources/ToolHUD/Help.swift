@@ -49,6 +49,7 @@ enum Help {
         case .appearance: "looks"
         case .buttons: "buttons"
         case .triggers: "opening"
+        case .activity: "activity"
         }
     }
 
@@ -150,8 +151,16 @@ enum Help {
             .tip("If ToolHUD quits, or its own menu bar icon is turned off, every app's icon comes back right away."),
         ]),
 
+        HelpTopic(id: "activity", title: "Activity", symbol: "chart.bar.xaxis", blocks: [
+            .text("Settings › Activity shows how many actions ToolHUD has run: a total for the period, a graph by day, week or month, and the total since ToolHUD started counting. Hover over a bar to see its count."),
+            .text("Every button you run from the HUD or the button pad counts, whether you click it or press its key, and so does each item you pick from another app's menu in ToolHUD's menu. Test This Button in Settings doesn't count."),
+            .text("The graph starts at 7 days and widens to 30, 90 and 180 days, then a year, as you keep using ToolHUD. Only the numbers are kept, never which buttons you ran."),
+            .heading("All your Macs"),
+            .text("With \"Sync settings with your other Macs\" on, each Mac shares its counts through iCloud Drive, encrypted like your settings. The This Mac / All Macs switch chooses which the graph shows, and the All Macs list shows each Mac's total and when it last synced. The switch is kept on each Mac."),
+        ]),
+
         HelpTopic(id: "sync", title: "Sync and Settings", symbol: "icloud", blocks: [
-            .text("Turn on \"Sync settings with your other Macs\" in Settings › General to share your buttons, look, shortcut and triggers through iCloud Drive. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
+            .text("Turn on \"Sync settings with your other Macs\" in Settings › General to share your buttons, look, shortcut and triggers through iCloud Drive, and to add up Activity across your Macs. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
             .text("Show in Dock and Show in menu bar choose where ToolHUD appears. With both off, open ToolHUD again from Finder or Spotlight to reach Settings."),
             .text("Reset to Defaults… puts buttons, look, shortcut and triggers back to how ToolHUD started; login and sync stay as they are."),
         ]),

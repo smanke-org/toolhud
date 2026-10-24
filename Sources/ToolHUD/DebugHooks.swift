@@ -11,6 +11,9 @@ import ToolHUDKit
 ///                                      button indexes past the ring's light pad buttons
 ///   TOOLHUD_DEBUG_SAMPLE_BUTTONS=1     shows the default ring and pad buttons instead of yours
 ///   TOOLHUD_DEBUG_SETTINGS=appearance  opens that Settings pane
+///                                      (TOOLHUD_DEBUG_SNAPSHOT=<png path> saves it there, then quits)
+///   TOOLHUD_DEBUG_ACTIVITY_REMOTES=<json file>  shows those Macs ([DeviceActivity]) in Settings › Activity;
+///                                      pair with TOOLHUD_ACTIVITY_FILE for this Mac's counts
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
 ///   TOOLHUD_DEBUG_HELP_TEST=<png path>   presses Help on every Settings pane, traces what opened,
@@ -26,6 +29,18 @@ enum DebugHooks {
     static var freezeHighlight = false
     /// The look `debugShow` asked for, used in place of the saved one.
     static var look: Visualization?
+
+    /// Whether this is a staging run, which must not touch the keychain or sync.
+    static var isStaging: Bool {
+        ProcessInfo.processInfo.environment.keys.contains { $0.hasPrefix("TOOLHUD_DEBUG_") && $0 != "TOOLHUD_DEBUG_TRACE" }
+    }
+
+    /// Other Macs' activity to show in Settings › Activity, read once from a JSON file.
+    static let activityRemotes: [DeviceActivity]? = {
+        guard let path = ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_ACTIVITY_REMOTES"],
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+        return try? DeviceActivity.decoder.decode([DeviceActivity].self, from: data)
+    }()
 
     /// Shows the buttons a new install starts with, for screenshots that don't depend on
     /// the user's own.
@@ -168,6 +183,18 @@ enum DebugHooks {
                                 window.setFrame(target, display: true)
                                 window.makeKeyAndOrderFront(nil)
                                 trace("moved to \(window.frame) number=\(window.windowNumber) visible=\(window.isVisible) screen=\(String(describing: window.screen?.localizedName))")
+                                guard let snapshot = env["TOOLHUD_DEBUG_SNAPSHOT"] else { return }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                                    MainActor.assumeIsolated {
+                                        if let view = window.contentView?.superview,
+                                           let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                                            view.cacheDisplay(in: view.bounds, to: rep)
+                                            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: snapshot))
+                                        }
+                                        trace("snapshot \(snapshot)")
+                                        NSApp.terminate(nil)
+                                    }
+                                }
                             }
                         }
                     }

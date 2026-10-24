@@ -4,7 +4,7 @@ import ToolHUDKit
 
 /// The panes, down the sidebar.
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, buttons, triggers
+    case general, appearance, buttons, triggers, activity
 
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
@@ -14,6 +14,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance: "circle.circle"
         case .buttons: "square.grid.2x2"
         case .triggers: "cursorarrow.click.2"
+        case .activity: "chart.bar.xaxis"
         }
     }
 }
@@ -82,6 +83,7 @@ struct SettingsRoot: View {
                 case .appearance: AppearanceSettings()
                 case .buttons: ButtonsSettings()
                 case .triggers: TriggersSettings()
+                case .activity: ActivitySettings()
                 }
                 // The version in the middle, the round Help button in the corner, as macOS does.
                 ZStack {

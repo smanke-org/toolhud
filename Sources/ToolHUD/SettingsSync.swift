@@ -43,8 +43,12 @@ final class SettingsSync {
             } else {
                 stop()
             }
+            ActivitySync.shared.start()
         }
     }
+
+    /// The data key, once it opens what's in iCloud Drive; for `ActivitySync`.
+    var syncKey: SymmetricKey? { keyState == .ready ? key : nil }
     private(set) var keyState = KeyState.inactive
     private(set) var lastSynced: Date?
     private(set) var lastSource: String?
@@ -94,6 +98,10 @@ final class SettingsSync {
     /// Must not touch Preferences: its initializer can report changes here.
     private init() {
         isEnabled = defaults.bool(forKey: Keys.enabled)
+        #if DEBUG
+        // A staging copy is signed differently, so reading the key would ask for keychain access.
+        if DebugHooks.isStaging { return }
+        #endif
         key = SyncKeychain.loadKey()
     }
 
@@ -215,6 +223,7 @@ final class SettingsSync {
         SyncKeychain.saveKey(newKey)
         keyState = .ready
         lastError = nil
+        ActivitySync.shared.keyDidChange()
     }
 
     private func forgetKey() {

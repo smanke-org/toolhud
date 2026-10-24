@@ -458,3 +458,73 @@ private func everyPad() -> [PadSpec] {
     let old = try RingFile.decode(RingFile(visualization: .halo, slots: DefaultRing.slots).encoded())
     #expect(old.pad == nil && old.padPosition == nil)
 }
+
+// MARK: - Activity
+
+private let utc: Calendar = {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "UTC")!
+    return calendar
+}()
+
+private func day(_ key: String) -> Date { ActivityLog.date(for: key, calendar: utc)!.addingTimeInterval(3600) }
+
+@Test func activityLogCountsDaysAndLifetime() {
+    var log = ActivityLog()
+    log.record(at: day("2026-10-20"), calendar: utc)
+    log.record(at: day("2026-10-20"), calendar: utc)
+    log.record(at: day("2026-10-18"), calendar: utc)
+    #expect(log.days == ["2026-10-20": 2, "2026-10-18": 1])
+    #expect(log.firstDay == "2026-10-18")
+    #expect(log.lifetime == 3)
+    #expect(log.total(since: day("2026-10-19"), calendar: utc) == 2)
+}
+
+@Test func activityTrimKeepsLifetimeAndFirstDay() {
+    var log = ActivityLog()
+    log.record(at: day("2025-01-01"), calendar: utc)
+    log.record(at: day("2026-10-20"), calendar: utc)
+    log.trim(keepDays: 400, now: day("2026-10-24"), calendar: utc)
+    #expect(log.days == ["2026-10-20": 1])
+    #expect(log.firstDay == "2025-01-01")
+    #expect(log.lifetime == 2)
+}
+
+@Test func activityCombinesMacs() {
+    let a = ActivityLog(firstDay: "2026-10-10", days: ["2026-10-20": 3], lifetime: 10)
+    let b = ActivityLog(firstDay: "2026-09-01", days: ["2026-10-20": 2, "2026-10-21": 1], lifetime: 5)
+    let all = ActivityLog.combined([a, b])
+    #expect(all.days == ["2026-10-20": 5, "2026-10-21": 1])
+    #expect(all.firstDay == "2026-09-01")
+    #expect(all.lifetime == 15)
+}
+
+@Test func activityRangeWidensWithHistory() {
+    let today = day("2026-10-24")
+    #expect(ActivityStats.range(firstDay: nil, today: today, calendar: utc) == .week)
+    #expect(ActivityStats.range(firstDay: day("2026-10-18"), today: today, calendar: utc) == .week)
+    #expect(ActivityStats.range(firstDay: day("2026-10-17"), today: today, calendar: utc) == .month)
+    #expect(ActivityStats.range(firstDay: day("2026-06-01"), today: today, calendar: utc) == .halfYear)
+    #expect(ActivityStats.range(firstDay: day("2025-01-01"), today: today, calendar: utc) == .year)
+}
+
+@Test func activityBarsBucketCounts() {
+    let today = day("2026-10-24")
+    let counts = [day("2026-10-24"): 4, day("2026-10-18"): 2, day("2026-10-17"): 9]
+    let week = ActivityStats.bars(counts: counts, range: .week, today: today, calendar: utc)
+    #expect(week.count == 7)
+    #expect(week.first?.count == 2)   // the 17th is outside the week
+    #expect(week.last?.count == 4)
+    let year = ActivityStats.bars(counts: counts, range: .year, today: today, calendar: utc)
+    #expect(year.count == 12)
+    #expect(year.last?.count == 15)
+}
+
+@Test func deviceActivitySurvivesSealing() throws {
+    let (_, key) = try SyncCrypto.createKeyring(passphrase: "correct horse", iterations: 1_000)
+    let record = DeviceActivity(deviceID: "abc", deviceName: "Test Mac", updatedAt: Date(timeIntervalSince1970: 1_800_000_000),
+                                appVersion: "1.2.0", log: ActivityLog(firstDay: "2026-10-01", days: ["2026-10-01": 7], lifetime: 7))
+    let sealed = try SyncCrypto.seal(DeviceActivity.encoder.encode(record), using: key)
+    let back = try DeviceActivity.decoder.decode(DeviceActivity.self, from: SyncCrypto.open(sealed, using: key))
+    #expect(back == record)
+}

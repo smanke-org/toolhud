@@ -160,6 +160,7 @@ final class MenuHubHost: NSObject, NSMenuDelegate {
             NSApp.yieldActivation(to: app)
         }
         _ = send(.invoke, to: pick.bundleID, data: Data(pick.path.utf8), awaitReply: false)
+        ActivityStore.shared.record()
     }
 
     /// An app opened a window from one of its items here. ToolHUD had the click, so it may

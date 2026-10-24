@@ -515,6 +515,7 @@ final class HUDController {
         model.fired = index
         model.firedAt = model.time
         lastUsed = Date()
+        ActivityStore.shared.record()
         if Preferences.shared.playSound { NSSound(named: "Pop")?.play() }
         let hold = model.visualization.fireDuration
         DispatchQueue.main.asyncAfter(deadline: .now() + hold) {
