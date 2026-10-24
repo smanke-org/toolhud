@@ -14,6 +14,7 @@ import ToolHUDKit
 ///                                      (TOOLHUD_DEBUG_SNAPSHOT=<png path> saves it there, then quits)
 ///   TOOLHUD_DEBUG_ACTIVITY_REMOTES=<json file>  shows those Macs ([DeviceActivity]) in Settings › Activity;
 ///                                      pair with TOOLHUD_ACTIVITY_FILE for this Mac's counts
+///                                      and TOOLHUD_DEBUG_DEVICE_NAME for this Mac's name
 ///   TOOLHUD_DEBUG_MISSING=<bundle id>    treats that lens app as not installed
 ///   TOOLHUD_DEBUG_DRY_RUN=1              traces the button instead of running it
 ///   TOOLHUD_DEBUG_HELP_TEST=<png path>   presses Help on every Settings pane, traces what opened,

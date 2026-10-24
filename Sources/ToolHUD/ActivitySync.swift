@@ -243,7 +243,11 @@ enum DeviceIdentity {
     /// The name in System Settings › General › About. Not `Host.current().localizedName`,
     /// which can block for seconds on DNS.
     static var deviceName: String {
-        (SCDynamicStoreCopyComputerName(nil, nil) as String?) ?? "Mac"
+        #if DEBUG
+        // A made-up name for screenshots.
+        if let staged = ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_DEVICE_NAME"] { return staged }
+        #endif
+        return (SCDynamicStoreCopyComputerName(nil, nil) as String?) ?? "Mac"
     }
 
     private static func hardwareUUID() -> String? {
