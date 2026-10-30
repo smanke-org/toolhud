@@ -8,6 +8,17 @@ app.delegate = delegate
 app.setActivationPolicy(AppPresence.showInDock ? .regular : .accessory)
 app.run()
 
+/// Quits ToolHUD without asking: for quitting itself (installing an update, ending a test).
+@MainActor
+enum QuitConfirmation {
+    private(set) static var confirmed = false
+
+    static func quitNow() {
+        confirmed = true
+        NSApp.terminate(nil)
+    }
+}
+
 /// Launch, the menu bar item, the Dock menu, and reopening.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -89,6 +100,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    /// Quitting asks first, while "Ask before quitting" is on in Settings › General. Not when
+    /// the Mac is logging out, restarting or shutting down (macOS gives the quit a reason
+    /// then), and not when ToolHUD quits itself to install an update.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let systemQuit = NSAppleEventManager.shared().currentAppleEvent?
+            .attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason)) != nil
+        guard Preferences.shared.confirmQuit, !QuitConfirmation.confirmed, !systemQuit else { return .terminateNow }
+
+        // A menu bar app needs to be a regular one for the alert to come to the front; the
+        // old policy goes back a runloop turn later, once the alert is gone (AppKit ignores
+        // it while the modal still holds the app active).
+        let previousPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.regular)
+        defer { DispatchQueue.main.async { NSApp.setActivationPolicy(previousPolicy) } }
+
+        let alert = NSAlert()
+        alert.messageText = "Quit \(AppInfo.name)?"
+        alert.informativeText = "The HUD's shortcut and mouse trigger stop working, and apps in ToolHUD's menu go back to their own icons."
+        // NSAlert puts a Cancel button on Esc, and Quit has no key, so Return does nothing:
+        // quitting takes a click on Quit, never a stray keystroke.
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Quit").keyEquivalent = ""
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Don't ask again"
+        alert.layout()
+        NSApp.activate(ignoringOtherApps: true)
+        alert.window.makeKeyAndOrderFront(nil)
+
+        guard alert.runModal() == .alertSecondButtonReturn else { return .terminateCancel }
+        if alert.suppressionButton?.state == .on { Preferences.shared.confirmQuit = false }
+        return .terminateNow
+    }
 
     /// `toolhud://show` opens the HUD and `toolhud://settings` opens Settings, for Shortcuts,
     /// scripts and our other apps.

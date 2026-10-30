@@ -9,6 +9,10 @@ import ToolHUDKit
 final class Preferences {
     static let shared = Preferences()
 
+    // MARK: General
+    /// Quitting asks first, so a stray ⌘Q doesn't stop the HUD.
+    var confirmQuit: Bool = true { didSet { save(confirmQuit, "confirmQuit") } }
+
     // MARK: Buttons
     /// Always twelve: the first `slotCount` are on the HUD, and the rest wait there so that
     /// lowering the count and raising it again brings the same buttons back.
@@ -54,6 +58,7 @@ final class Preferences {
     static let keys = [
         "slots", "slotCount", "visualization", "opacity", "hudSize", "hudAnchor", "playSound", "haptics",
         "hotKey", "hotKeyMode", "mouseTrigger", "holdDelay", "padEnabled", "padPosition", "padSlots", "padCount",
+        "confirmQuit",
     ]
 
     @ObservationIgnored private var loading = false
@@ -98,6 +103,7 @@ final class Preferences {
             "playSound": playSound, "haptics": haptics, "hotKey": data(hotKey),
             "hotKeyMode": hotKeyMode.rawValue, "mouseTrigger": mouseTrigger.rawValue, "holdDelay": holdDelay,
             "padEnabled": padEnabled, "padPosition": padPosition.rawValue, "padSlots": data(padSlots), "padCount": padCount,
+            "confirmQuit": confirmQuit,
         ]
     }
 
@@ -142,6 +148,8 @@ final class Preferences {
         hotKeyMode = HotKeyMode(rawValue: d.string(forKey: "hotKeyMode") ?? "") ?? .hold
         mouseTrigger = MouseTrigger(rawValue: d.string(forKey: "mouseTrigger") ?? "") ?? .optionRight
         holdDelay = min(max(double("holdDelay", Defaults.holdDelay), 0.15), 0.8)
+
+        confirmQuit = bool("confirmQuit", true)
     }
 
     private func save(_ value: Any, _ key: String) {

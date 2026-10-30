@@ -25,6 +25,10 @@ import ToolHUDKit
 ///   TOOLHUD_DEBUG_RUN_LENS=<bundle id>:<feature>  runs that lens action as a button would
 ///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
 ///                                      presses those keys, only if that app is in front
+///   TOOLHUD_DEBUG_QUIT_TEST=<return|cancel|quit|suppress|off>  quits as ⌘Q does, then answers the
+///                                      question a second later: presses Return, clicks Cancel or Quit
+///                                      (ticking "Don't ask again" first for `suppress`), or with `off`
+///                                      turns the setting off first; traces what the question showed
 ///
 /// Both open on the first Retina display, so the shots are taken at 2×.
 @MainActor
@@ -116,6 +120,28 @@ enum DebugHooks {
     /// Starts a staging run if one was asked for; returns whether it did.
     static func run() -> Bool {
         let env = ProcessInfo.processInfo.environment
+        if let how = env["TOOLHUD_DEBUG_QUIT_TEST"] {
+            trace("started policy \(NSApp.activationPolicy().rawValue) active \(NSApp.isActive)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + (Double(env["TOOLHUD_DEBUG_DELAY"] ?? "") ?? 1)) {
+                MainActor.assumeIsolated {
+                    if how == "off" { Preferences.shared.confirmQuit = false }
+                    trace("quitting confirmQuit \(Preferences.shared.confirmQuit) policy \(NSApp.activationPolicy().rawValue) active \(NSApp.isActive)")
+                    let answer = Timer(timeInterval: 1, repeats: false) { _ in
+                        MainActor.assumeIsolated { answerQuitQuestion(how) }
+                    }
+                    RunLoop.main.add(answer, forMode: .common)
+                    NSApp.terminate(nil)
+                    // Only reached when the quit was called off.
+                    let after = Timer(timeInterval: 0.5, repeats: false) { _ in
+                        MainActor.assumeIsolated {
+                            trace("still running; confirmQuit \(Preferences.shared.confirmQuit); policy \(NSApp.activationPolicy().rawValue) active \(NSApp.isActive)")
+                        }
+                    }
+                    RunLoop.main.add(after, forMode: .common)
+                }
+            }
+            return true
+        }
         if let spec = env["TOOLHUD_DEBUG_HUD"] {
             let parts = spec.split(separator: ":")
             guard let look = parts.first.flatMap({ Visualization(rawValue: String($0)) }) else { return false }
@@ -191,7 +217,7 @@ enum DebugHooks {
                         try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: snapshot + ".settings.png"))
                     }
                     trace("done")
-                    NSApp.terminate(nil)
+                    QuitConfirmation.quitNow()
                 }
             }
             return true
@@ -199,7 +225,7 @@ enum DebugHooks {
         if let name = env["TOOLHUD_DEBUG_SETTINGS"], let pane = SettingsPane(rawValue: name) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 MainActor.assumeIsolated {
-                    // Opened on Appearance first, as the app does, then switched.
+                    // Opened on Appearance first (General hangs in a staging run), then switched.
                     SettingsWindow.shared.show(.appearance)
                     SettingsWindow.shared.show(pane)
                     if let window = SettingsWindow.shared.debugWindow,
@@ -229,7 +255,7 @@ enum DebugHooks {
                                             try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: snapshot))
                                         }
                                         trace("snapshot \(snapshot)")
-                                        NSApp.terminate(nil)
+                                        QuitConfirmation.quitNow()
                                     }
                                 }
                             }
@@ -240,6 +266,42 @@ enum DebugHooks {
             return true
         }
         return false
+    }
+
+    /// Answers the quit question for `TOOLHUD_DEBUG_QUIT_TEST`, tracing what it showed first.
+    private static func answerQuitQuestion(_ how: String) {
+        guard let window = NSApp.modalWindow else { trace("no question"); return }
+        var texts: [String] = []
+        var buttons: [NSButton] = []
+        func walk(_ view: NSView) {
+            if let button = view as? NSButton { buttons.append(button) }
+            else if let field = view as? NSTextField, !field.stringValue.isEmpty { texts.append(field.stringValue) }
+            view.subviews.forEach(walk)
+        }
+        if let content = window.contentView { walk(content) }
+        let titles = buttons.map { "\($0.title)[\($0.keyEquivalent == "\r" ? "Return" : $0.keyEquivalent == "\u{1b}" ? "Esc" : $0.keyEquivalent)]" }
+        trace("asked \(texts) buttons \(titles) key \(window.isKeyWindow) visible \(window.isVisible) active \(NSApp.isActive) policy \(NSApp.activationPolicy().rawValue)")
+        switch how {
+        case "return":
+            if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                            windowNumber: window.windowNumber, context: nil, characters: "\r",
+                                            charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36) {
+                NSApp.postEvent(event, atStart: false)
+            }
+            // Return should leave the question up; close it with Cancel afterwards.
+            let check = Timer(timeInterval: 1, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    trace("after Return: question still up \(NSApp.modalWindow != nil)")
+                    buttons.first { $0.title == "Cancel" }?.performClick(nil)
+                }
+            }
+            RunLoop.main.add(check, forMode: .common)
+        case "cancel": buttons.first { $0.title == "Cancel" }?.performClick(nil)
+        case "quit", "suppress":
+            if how == "suppress" { buttons.first { $0.title == "Don't ask again" }?.performClick(nil) }
+            buttons.first { $0.title == "Quit" }?.performClick(nil)
+        default: break
+        }
     }
 }
 #endif

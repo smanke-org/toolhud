@@ -161,9 +161,10 @@ enum Help {
         ]),
 
         HelpTopic(id: "sync", title: "Sync and Settings", symbol: "icloud", blocks: [
-            .text("Turn on \"Sync settings with your other Macs\" in Settings › General to share your buttons, look, shortcut and triggers through iCloud Drive, and to add up Activity across your Macs. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
+            .text("Turn on \"Sync settings with your other Macs\" in Settings › General to share your buttons, look, shortcut, triggers and asking before quitting through iCloud Drive, and to add up Activity across your Macs. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
             .text("Show in Dock and Show in menu bar choose where ToolHUD appears. With both off, open ToolHUD again from Finder or Spotlight to reach Settings."),
-            .text("Reset to Defaults… puts buttons, look, shortcut and triggers back to how ToolHUD started; login and sync stay as they are."),
+            .text("Reset to Defaults… puts buttons, look, shortcut, triggers and asking before quitting back to how ToolHUD started; login and sync stay as they are."),
+            .tip("Quitting asks first, since the HUD's shortcut and mouse trigger stop and your apps' menus go back to their own icons. Turn off \"Ask before quitting\" in Settings › General, or tick \"Don't ask again\" when it asks."),
         ]),
 
         HelpTopic(id: "automation", title: "Automation", symbol: "gearshape.2", blocks: [

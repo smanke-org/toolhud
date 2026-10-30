@@ -63,7 +63,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 @Observable
 @MainActor
 final class PaneSelection {
-    var pane: SettingsPane = .appearance
+    var pane: SettingsPane = .general
 }
 
 struct SettingsRoot: View {
@@ -279,6 +279,8 @@ struct GeneralSettings: View {
                 if let error = login.lastError {
                     Text(error).font(.callout).foregroundStyle(.red)
                 }
+                Toggle("Ask before quitting", isOn: $prefs.confirmQuit)
+                    .help("Quitting ToolHUD asks first, so a stray ⌘Q doesn't stop the HUD or send your apps' menus back to their own icons.")
             }
             Section {
                 Toggle("Sync settings with your other Macs", isOn: $sync.isEnabled)
@@ -307,7 +309,7 @@ struct GeneralSettings: View {
             } header: {
                 Text("iCloud")
             } footer: {
-                Text("Your buttons, look, shortcut and triggers follow you to every Mac signed in to the same iCloud account with sync turned on. They're encrypted on this Mac with your sync passphrase before they reach iCloud Drive, so neither Apple nor the developer can read them. Open at login stays on each Mac.")
+                Text("Your buttons, look, shortcut, triggers and asking before quitting follow you to every Mac signed in to the same iCloud account with sync turned on. They're encrypted on this Mac with your sync passphrase before they reach iCloud Drive, so neither Apple nor the developer can read them. Open at login stays on each Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
@@ -370,7 +372,7 @@ struct GeneralSettings: View {
                 MouseTriggers.shared.apply()
             }
         } message: {
-            Text("Your buttons, look, shortcut and triggers go back to how ToolHUD started. Where it appears, login and sync stay as they are.")
+            Text("Your buttons, look, shortcut, triggers and asking before quitting go back to how ToolHUD started. Where it appears, login and sync stay as they are.")
         }
     }
 }
