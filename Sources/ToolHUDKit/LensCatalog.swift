@@ -149,9 +149,10 @@ public enum LensCatalog {
         Shortcut(keyCode: code, modifiers: [.option, .shift, .command], key: key)
     }
 
-    /// Needs CaptureLens 1.0.0 or later, the first version, which answers all of these.
+    /// SnagAnything, called CaptureLens before 1.1.0: same bundle ID, and its old capturelens://
+    /// links still work, so buttons keep working on either version. Capture Text needs 1.1.0.
     public static let captureLens = LensApp(
-        id: "com.smanke.CaptureLens", name: "CaptureLens", scheme: "capturelens", color: SlotColor(hex: "#2E5BFF")!,
+        id: "com.smanke.CaptureLens", name: "SnagAnything", scheme: "capturelens", color: SlotColor(hex: "#2E5BFF")!,
         features: [
             LensFeature(id: "capture", title: "Capture a window or an area", shortTitle: "Capture",
                         symbol: "camera.viewfinder", shortcut: s(KeyCode.digits[3], "4")),
@@ -162,10 +163,12 @@ public enum LensCatalog {
             LensFeature(id: "area", title: "Capture an area", shortTitle: "Area", symbol: "rectangle.dashed"),
             LensFeature(id: "recapture", title: "Capture the same area again", shortTitle: "Capture again",
                         symbol: "arrow.clockwise"),
+            LensFeature(id: "text", title: "Copy the text in an area", shortTitle: "Capture text",
+                        symbol: "text.viewfinder", shortcut: s(KeyCode.t, "T")),
             LensFeature(id: "library", title: "Open the capture library", shortTitle: "Library",
                         symbol: "photo.on.rectangle", shortcut: s(KeyCode.l, "L"), activates: true),
         ],
-        downloadURL: URL(string: "https://github.com/smanke-org/CaptureLens/releases/latest"))
+        downloadURL: URL(string: "https://github.com/smanke-org/SnagAnything/releases/latest"))
 
     public static let builtIn: [LensApp] = [textLens, clickLens, pasteLens, diskLens, expansionLens, captureLens]
 

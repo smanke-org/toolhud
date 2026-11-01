@@ -50,11 +50,11 @@ import Testing
 @Test func captureLensActionsUseItsScheme() {
     let app = LensCatalog.captureLens
     #expect(LensCatalog.app("com.smanke.CaptureLens") == app)
-    #expect(app.features.map(\.id) == ["capture", "screen", "window", "area", "recapture", "library"])
+    #expect(app.features.map(\.id) == ["capture", "screen", "window", "area", "recapture", "text", "library"])
     #expect(app.url(for: "capture")?.absoluteString == "capturelens://capture?source=toolhud")
-    #expect(app.downloadURL?.absoluteString == "https://github.com/smanke-org/CaptureLens/releases/latest")
+    #expect(app.downloadURL?.absoluteString == "https://github.com/smanke-org/SnagAnything/releases/latest")
     let owner = LensCatalog.owner(of: Shortcut(keyCode: KeyCode.digits[3], modifiers: [.option, .shift, .command], key: "4"))
-    #expect(owner?.app.name == "CaptureLens")
+    #expect(owner?.app.name == "SnagAnything")
     #expect(owner?.feature.id == "capture")
 }
 

@@ -95,7 +95,7 @@ enum Help {
             .heading("What a button can do"),
             .text("Choose under When chosen:"),
             .keys([
-                ("Lens action", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens, CaptureLens or another supported app"),
+                ("Lens action", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens, SnagAnything or another supported app"),
                 ("Keystroke", "Press keys for you, in the app you were using or one you choose"),
                 ("Shortcut", "Run a shortcut from the Shortcuts app"),
                 ("Open", "Open a web page, or a file, folder or app"),
@@ -140,7 +140,7 @@ enum Help {
                 ("PasteLens", "Quick Paste, History, Stack, snippets"),
                 ("DiskLens", "Scan a disk, open DiskLens (1.0.7 or later)"),
                 ("ExpansionLens", "Quick search, new snippet, pause or resume"),
-                ("CaptureLens", "Capture the screen, a window or an area, capture again, open the library"),
+                ("SnagAnything", "Capture the screen, a window or an area, capture again, capture text, open the library"),
                 ("AudioLens", "Turn the playing app up or down, mute it, switch outputs"),
                 ("BatteryLens", "Show battery levels, refresh, devices"),
                 ("M3 Tracker, NetworkToggle, StayMounted, WindowKeeper, DockMirror and others", "Their own actions, when installed in /Applications"),
