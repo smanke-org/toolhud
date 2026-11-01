@@ -5,6 +5,8 @@ the mouse in any app, and a ring of buttons opens around the pointer. Click a bu
 runs: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick
 Paste, search your ExpansionLens snippets (1.0.0 or later), or press any key combination in any app.
 
+<p align="center"><img src="docs/images/toolhud-halo.jpg" width="480" alt="The ToolHUD Halo ring with eight buttons, Capture text lit at the top and its name and app shown in the center"></p>
+
 ## Download
 
 **[⬇ Download ToolHUD.dmg](https://github.com/smanke-org/ToolHUD/releases/latest/download/ToolHUD.dmg)**
@@ -16,6 +18,37 @@ Paste, search your ExpansionLens snippets (1.0.0 or later), or press any key com
    work without it.
 
 Requires macOS 26 or later.
+
+## Features
+
+- **A ring at your pointer**: press ⌃⌥⌘Space or ⌥ + right-click in any app and a ring of 2 to 12 buttons opens around the pointer. Click a button or press its number; letting go of the shortcut or the mouse never runs anything.
+- **Lens actions**: buttons run features of our other apps directly, through their URL schemes: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick Paste, search ExpansionLens snippets and more. They keep working if you change those apps' shortcuts.
+- **Keystrokes**: a button can press any key combination, or several in a row, in the app you were using or in an app you choose.
+- **Ten looks**: Halo, Orbit, Dial, Stargate, Red Alert, Constellation, Glass Pills and Planetary rings, or the Command Deck and Hive button hubs. Opacity, size, where it opens, a sound and a trackpad haptic are adjustable.
+- **Button pad**: up to 8 more buttons beside the HUD, drawn to match its look, that run on A, S, D, F, G, H, J and K.
+- **Mouse triggers**: open the HUD with ⌥ + right-click, by holding the right button, with the middle button, or with either side button.
+- **Shareable rings**: export your buttons, button pad and look to a `.toolhudring` file, and import one to keep or share.
+- **Your apps' menus**: while ToolHUD runs, our other apps can leave the menu bar and appear as submenus of ToolHUD's menu.
+- **Activity**: Settings › Activity graphs how many actions you've run, on this Mac or all your Macs. Only the numbers are kept, never which buttons you ran.
+- **Encrypted sync**: your buttons, look, shortcut and triggers follow you to every Mac on the same iCloud account, end-to-end encrypted with your sync passphrase.
+- **Automation**: `toolhud://show` opens the HUD and `toolhud://settings` opens Settings.
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/toolhud-command-deck.jpg" alt="The Command Deck look, a panel of eight numbered keycaps such as Capture text, Spotlight and Quick Paste, each labeled with its app"><br><sub><b>Command Deck.</b> One of ten looks: a panel of keycaps.</sub></td>
+<td width="50%"><img src="docs/images/toolhud-stargate.jpg" alt="The Stargate look, a ring of chevrons with Draw arrow locked and named in the center"><br><sub><b>Stargate.</b> The chevrons are the buttons; the gate opens when one locks.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/toolhud-pad-halo.jpg" alt="The Halo ring with a button pad beside it holding Capture again, Paste stack, Search snippets, Watch area and Snippets on keys A, S, D, F and G"><br><sub><b>Button pad.</b> More buttons beside the ring, run with A to K.</sub></td>
+<td width="50%"><img src="docs/images/toolhud-settings-buttons.jpg" alt="ToolHUD Settings on the Buttons pane, with the button list and the Capture text button set to a TextLens lens action"><br><sub><b>Buttons.</b> Pick an app feature or a keystroke for each button.</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><img src="docs/images/toolhud-menu-hub.jpg" width="320" alt="ToolHUD's menu bar menu listing other apps as submenus, with ClickLens's submenu open"><br><sub><b>Your apps' menus.</b> Other apps as submenus of ToolHUD's menu.</sub></td>
+<td width="50%"><img src="docs/images/toolhud-settings-activity.webp" alt="ToolHUD Settings on the Activity pane, with a bar chart of actions over 90 days and totals for three Macs"><br><sub><b>Activity.</b> How many actions you run, on this Mac or all your Macs.</sub></td>
+</tr>
+</table>
 
 ## Use it
 
