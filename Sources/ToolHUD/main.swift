@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if !AccessibilityTrust.shared.isTrusted { AccessibilityTrust.shared.request() }
         }
 
-        AutoUpdater.shared.start()
+        AutoUpdater.shared.start(newInstall: newInstall)
         if newInstall || (!AppPresence.showInMenuBar && !AppPresence.showInDock) { showSettings() }
     }
 

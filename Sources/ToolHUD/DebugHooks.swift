@@ -25,6 +25,8 @@ import ToolHUDKit
 ///   TOOLHUD_DEBUG_RUN_LENS=<bundle id>:<feature>  runs that lens action as a button would
 ///   TOOLHUD_DEBUG_POST_TEXT=ks TOOLHUD_DEBUG_POST_MODS=<raw> TOOLHUD_DEBUG_POST_ONLY_TO=<app name>
 ///                                      presses those keys, only if that app is in front
+///   TOOLHUD_DEBUG_UPDATE_NOTES=<folder>  draws the update prompt, What's New and Settings to PNGs there,
+///                                      writes report.txt, then quits (from a copy with its own bundle id)
 ///   TOOLHUD_DEBUG_QUIT_TEST=<return|cancel|quit|suppress|off>  quits as ⌘Q does, then answers the
 ///                                      question a second later: presses Return, clicks Cancel or Quit
 ///                                      (ticking "Don't ask again" first for `suppress`), or with `off`
@@ -124,6 +126,13 @@ enum DebugHooks {
     /// Starts a staging run if one was asked for; returns whether it did.
     static func run() -> Bool {
         let env = ProcessInfo.processInfo.environment
+        if let folder = env["TOOLHUD_DEBUG_UPDATE_NOTES"] {
+            let start = Timer(timeInterval: 1, repeats: false) { _ in
+                MainActor.assumeIsolated { DebugUpdateNotes.run(folder: folder) }
+            }
+            RunLoop.main.add(start, forMode: .common)
+            return true
+        }
         if let scenario = env["TOOLHUD_DEBUG_SCENARIO"] {
             // From a timer, not the main queue: blocks the HUD puts on the main queue then
             // still run while the scenario waits for them.
