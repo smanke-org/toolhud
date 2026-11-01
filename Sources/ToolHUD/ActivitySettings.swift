@@ -171,6 +171,11 @@ struct ActivitySettings: View {
         case .halfYear: step = 4
         case .year: step = 2
         }
+        // Months count back from this one, so the current month is always labeled; a whole
+        // month is wide enough to hold its name.
+        if range == .year {
+            return stride(from: bars.count - 1, through: 0, by: -step).map { bars[$0].start }.reversed()
+        }
         // Counted from the left, and never on the last bar, whose label would run off the edge.
         let last = range == .week ? bars.count - 1 : bars.count - 2
         return stride(from: 0, through: last, by: step).map { bars[$0].start }

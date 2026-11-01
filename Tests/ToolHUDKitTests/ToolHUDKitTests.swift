@@ -739,3 +739,17 @@ private func names(_ n: Int) -> [Slot] { (0..<n).map { Slot(name: "B\($0)", symb
     #expect(RepeatTarget.contains(HUDPoint(0, 10), in: .halo))
     #expect(!RepeatTarget.contains(HUDPoint(0, 140), in: .halo))
 }
+
+@Test func yearViewShowsTheWholeCurrentMonth() {
+    // On the 1st, this month's bar used to end at tomorrow: one day wide, so it looked missing.
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "UTC")!
+    let today = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1, hour: 10))!
+    let october = calendar.date(from: DateComponents(year: 2026, month: 10, day: 24))!
+    let bars = ActivityStats.bars(counts: [october: 18, calendar.startOfDay(for: today): 2], range: .year, today: today,
+                                 calendar: calendar)
+    #expect(bars.count == 12)
+    #expect(bars.last?.start == calendar.date(from: DateComponents(year: 2026, month: 11, day: 1)))
+    #expect(bars.last?.end == calendar.date(from: DateComponents(year: 2026, month: 12, day: 1)))
+    #expect(bars.last?.count == 2 && bars[bars.count - 2].count == 18)
+}
