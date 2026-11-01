@@ -755,11 +755,12 @@ final class HUDController {
             runResult()
         case KeyCode.delete:
             if model.query.isEmpty { endSearch() } else { model.query.removeLast(); updateResults() }
-        case KeyCode.down, KeyCode.tab where !event.modifierFlags.contains(.shift):
-            if !model.results.isEmpty { model.resultIndex = (model.resultIndex + 1) % model.results.count }
-            keyboardPointer = NSEvent.mouseLocation
-        case KeyCode.up, KeyCode.tab:
-            if !model.results.isEmpty { model.resultIndex = (model.resultIndex - 1 + model.results.count) % model.results.count }
+        case KeyCode.down, KeyCode.up, KeyCode.tab:
+            // Tab goes down the list and Shift-Tab up, like the arrows.
+            let up = event.keyCode == KeyCode.up || (event.keyCode == KeyCode.tab && event.modifierFlags.contains(.shift))
+            if !model.results.isEmpty {
+                model.resultIndex = (model.resultIndex + (up ? -1 : 1) + model.results.count) % model.results.count
+            }
             keyboardPointer = NSEvent.mouseLocation
         case KeyCode.left, KeyCode.right, KeyCode.forwardDelete:
             break
