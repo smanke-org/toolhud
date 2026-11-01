@@ -577,3 +577,165 @@ private func names(_ n: Int) -> [Slot] { (0..<n).map { Slot(name: "B\($0)", symb
     SlotListEdit.duplicate(at: 0, slots: &slots, count: &count, maxCount: 12)
     #expect(count == 12)
 }
+
+// MARK: - 2.0: new kinds, folders, app rings, search, triggers
+
+@Test func newButtonKindsRoundTrip() throws {
+    var folder = Slot(name: "Tools", symbol: "folder", mode: .folder,
+                      children: [Slot(name: "Docs", symbol: "safari", mode: .open, openTarget: "https://example.com"),
+                                 Slot(name: "Hi", symbol: "text.cursor", mode: .text, text: "Hello\nthere", textMethod: .paste)])
+    folder.steps = nil
+    let chain = Slot(name: "Two", symbol: "list.number", mode: .chain, steps: [
+        ChainStep(action: Slot(name: "Export", symbol: "x", mode: .menuItem, menuPath: ["File", "Export…"]), delay: 0.5),
+        ChainStep(action: Slot(name: "Say", symbol: "x", mode: .script, script: "say hi", scriptKind: .shell), delay: 0),
+    ])
+    let data = try JSONEncoder().encode([folder, chain])
+    let back = try JSONDecoder().decode([Slot].self, from: data)
+    #expect(back == [folder, chain])
+    #expect(back[0].folderButtons.count == 2)
+    #expect(back[1].steps?.first?.action.menuPath == ["File", "Export…"])
+    #expect(back[1].steps?[1].action.scriptKind == .shell)
+}
+
+@Test func oldButtonsStillReadAndNewOnesStayCompact() throws {
+    let old = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"Spot","symbol":"circle","mode":"lens","lensApp":"com.smanke.ClickLens","lensFeature":"spotlight","sendTo":{"frontmost":{}}}"#
+    let slot = try JSONDecoder().decode(Slot.self, from: Data(old.utf8))
+    #expect(slot.mode == .lens && slot.textMethod == .type && slot.children == nil)
+    let json = String(decoding: try JSONEncoder().encode(Slot.empty()), as: UTF8.self)
+    #expect(!json.contains("textMethod") && !json.contains("children") && !json.contains("scriptKind"))
+    // A kind from a later version reads as a keystroke rather than failing the ring.
+    let future = #"{"name":"X","symbol":"circle","mode":"teleport"}"#
+    #expect(try JSONDecoder().decode(Slot.self, from: Data(future.utf8)).mode == .keystroke)
+}
+
+@Test func stepsCantNestWaitingKinds() {
+    #expect(ActionMode.keystroke.canBeStep && ActionMode.lens.canBeStep && ActionMode.script.canBeStep)
+    #expect(!ActionMode.chain.canBeStep && !ActionMode.folder.canBeStep && !ActionMode.appMenu.canBeStep)
+    let decoded = try? JSONDecoder().decode(ChainStep.self, from: Data(#"{"delay":99}"#.utf8))
+    #expect(decoded?.delay == ChainStep.maxDelay)
+}
+
+@Test func freshCopiesGetNewIdentitiesThroughout() {
+    let child = Slot.empty()
+    let folder = Slot(name: "F", symbol: "folder", mode: .folder, steps: [ChainStep(action: Slot.empty())],
+                      children: [child])
+    let copy = folder.freshCopy()
+    #expect(copy.id != folder.id)
+    #expect(copy.children?.first?.id != child.id)
+    #expect(copy.steps?.first?.action.id != folder.steps?.first?.action.id)
+    #expect(copy.children?.first?.name == child.name)
+}
+
+@Test func appRingsKeepFullLengthLists() {
+    let ring = AppRing.copying(bundleID: "com.apple.Safari", name: "Safari", slots: Array(DefaultRing.slots.prefix(3)),
+                               slotCount: 3, padSlots: [], padCount: 99)
+    #expect(ring.slots.count == DefaultRing.maxCount)
+    #expect(ring.padSlots.count == DefaultPad.maxCount)
+    #expect(ring.padCount == DefaultPad.maxCount)
+    #expect(ring.visibleSlots.count == 3)
+}
+
+@Test func ringsAreFoundByName() {
+    let safari = AppRing(bundleID: "com.apple.Safari", name: "Safari", slots: [], slotCount: 4, padSlots: [], padCount: 2)
+    let folder = Slot(name: "Writing", symbol: "folder", mode: .folder, children: [.empty(), .empty()])
+    let buttons = [Slot.empty(), folder]
+    #expect(RingLookup.find("safari", appRings: [safari], buttons: buttons) == .app("com.apple.Safari"))
+    #expect(RingLookup.find("com.apple.Safari", appRings: [safari], buttons: buttons) == .app("com.apple.Safari"))
+    #expect(RingLookup.find("WRITING", appRings: [safari], buttons: buttons) == .folder(folder))
+    #expect(RingLookup.find("default", appRings: [safari], buttons: buttons) == .usual)
+    #expect(RingLookup.find("Nope", appRings: [safari], buttons: buttons) == nil)
+}
+
+@Test func searchRanksPrefixesFirst() {
+    let capture = SearchMatch.score("cap", in: "Capture text")
+    let recapture = SearchMatch.score("cap", in: "Capture the same area again")
+    let inside = SearchMatch.score("ture", in: "Capture text")
+    let letters = SearchMatch.score("ctx", in: "Capture text")
+    #expect(capture != nil && inside != nil && letters != nil)
+    #expect(capture! > inside!)
+    #expect(capture! > recapture!)
+    #expect(SearchMatch.score("text", in: "Capture text")! > inside!)
+    #expect(SearchMatch.score("text cap", in: "Capture text") != nil)
+    #expect(SearchMatch.score("zzz", in: "Capture text") == nil)
+    #expect(SearchMatch.score("xpo", in: "Export…") == nil || SearchMatch.score("exp", in: "Export…")! > SearchMatch.score("xpo", in: "Export…")!)
+    #expect(SearchMatch.score("café", in: "Cafe") == 1000)
+}
+
+@Test func searchCardRowsHitTest() {
+    let rows = 3
+    let o = SearchCardLayout.origin(rows: rows)
+    let firstRow = HUDPoint(o.x + 20, o.y + SearchCardLayout.fieldHeight + 5)
+    let thirdRow = HUDPoint(o.x + 20, o.y + SearchCardLayout.fieldHeight + SearchCardLayout.rowHeight * 2 + 5)
+    #expect(SearchCardLayout.row(at: firstRow, rows: rows) == 0)
+    #expect(SearchCardLayout.row(at: thirdRow, rows: rows) == 2)
+    #expect(SearchCardLayout.row(at: HUDPoint(o.x + 20, o.y + 5), rows: rows) == nil)
+    #expect(SearchCardLayout.contains(HUDPoint(0, 0), rows: rows))
+    #expect(!SearchCardLayout.contains(HUDPoint(0, 400), rows: rows))
+}
+
+@Test func menuPathsParseAndMatchLoosely() {
+    #expect(MenuPath.parse("File > Export…") == ["File", "Export…"])
+    #expect(MenuPath.parse(" View >  Show Sidebar ") == ["View", "Show Sidebar"])
+    #expect(MenuPath.display(["File", "Save"]) == "File > Save")
+    #expect(MenuPath.matches("Export…", "export..."))
+    #expect(!MenuPath.matches("Export", "Export as PDF…"))
+}
+
+@Test func doubleTapNeedsTwoQuickCleanTaps() {
+    var d = DoubleTapDetector(key: .option)
+    let r82341 = d.flagsChanged(.option, at: 0)
+    #expect(!r82341)
+    let r83914 = d.flagsChanged([], at: 0.08)
+    #expect(!r83914)
+    let r34001 = d.flagsChanged(.option, at: 0.2)
+    #expect(!r34001)
+    let r29620 = d.flagsChanged([], at: 0.27)
+    #expect(r29620)
+
+    // Too slow between taps.
+    var slow = DoubleTapDetector(key: .option)
+    _ = slow.flagsChanged(.option, at: 0); _ = slow.flagsChanged([], at: 0.05)
+    _ = slow.flagsChanged(.option, at: 0.9)
+    let r7256 = slow.flagsChanged([], at: 0.95)
+    #expect(!r7256)
+
+    // A key pressed in between: it was a shortcut.
+    var shortcut = DoubleTapDetector(key: .command)
+    _ = shortcut.flagsChanged(.command, at: 0); _ = shortcut.flagsChanged([], at: 0.05)
+    shortcut.interrupt()
+    _ = shortcut.flagsChanged(.command, at: 0.15)
+    let r62938 = shortcut.flagsChanged([], at: 0.2)
+    #expect(!r62938)
+
+    // Another modifier joined in.
+    var chord = DoubleTapDetector(key: .shift)
+    _ = chord.flagsChanged(.shift, at: 0); _ = chord.flagsChanged([.shift, .command], at: 0.03)
+    _ = chord.flagsChanged([], at: 0.06)
+    _ = chord.flagsChanged(.shift, at: 0.15)
+    let r19279 = chord.flagsChanged([], at: 0.2)
+    #expect(!r19279)
+
+    // Held too long to be a tap.
+    var held = DoubleTapDetector(key: .control)
+    _ = held.flagsChanged(.control, at: 0); _ = held.flagsChanged([], at: 0.05)
+    _ = held.flagsChanged(.control, at: 0.1)
+    let r6003 = held.flagsChanged([], at: 0.9)
+    #expect(!r6003)
+}
+
+@Test func hotCornersCoverTheirCornerOnly() {
+    let f = (minX: 0.0, minY: 0.0, maxX: 1440.0, maxY: 900.0)
+    func check(_ c: HotCorner, _ x: Double, _ y: Double) -> Bool {
+        c.contains(x: x, y: y, minX: f.minX, minY: f.minY, maxX: f.maxX, maxY: f.maxY)
+    }
+    #expect(check(.topLeft, 0, 899))
+    #expect(check(.bottomRight, 1439, 0))
+    #expect(!check(.topLeft, 0, 0))
+    #expect(!check(.topRight, 700, 899))
+    #expect(!check(.off, 0, 899))
+}
+
+@Test func repeatTargetIsTheMiddle() {
+    #expect(RepeatTarget.contains(HUDPoint(0, 10), in: .halo))
+    #expect(!RepeatTarget.contains(HUDPoint(0, 140), in: .halo))
+}

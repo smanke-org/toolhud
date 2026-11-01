@@ -13,11 +13,22 @@ struct HUDRootView: View {
         let half = HUDLayout.canvas / 2
         // The canvas, grown to one side when the Halo has its button pad.
         let box = HUDLayout.drawingBounds(pad: model.pad)
+        // The HUD's center, in this stack's coordinates.
+        let center = CGPoint(x: -box.minX, y: -box.minY)
         ZStack(alignment: .topLeading) {
-            HUDDrawing(model: model)
-                .offset(x: -half - box.minX, y: -half - box.minY)
-            if model.pad != nil {
-                ButtonPadView(model: model, origin: HUDPoint(box.minX, box.minY))
+            Group {
+                HUDDrawing(model: model)
+                    .offset(x: -half - box.minX, y: -half - box.minY)
+                if model.pad != nil {
+                    ButtonPadView(model: model, origin: HUDPoint(box.minX, box.minY))
+                }
+                if model.showsStateLights {
+                    StateLightsView(model: model, center: center)
+                }
+            }
+            .opacity(model.searching ? 0.22 : 1)
+            if model.searching {
+                SearchCardView(model: model, center: center)
             }
         }
         .frame(width: box.width, height: box.height, alignment: .topLeading)
@@ -102,12 +113,17 @@ extension HUDModel {
     /// The readout's three lines for the button in focus.
     var readout: (title: String, app: String, detail: String) {
         if gearHovered && fired == nil { return ("Settings", "ToolHUD", "Buttons, looks and triggers") }
+        if let hint, fired == nil, focus == nil { return hint }
         guard let slot = focusSlot else {
             let letters = pad.map { $0.count == 1 ? " · A" : " · A–\(DefaultPad.keyLetters[$0.count - 1])" } ?? ""
-            return ("ToolHUD", "Click a button", "Esc closes · 1–\(min(slots.count, 9))\(letters) pick")
+            let search = searchAvailable ? " · / search" : ""
+            if let folderName {
+                return (folderName, "Folder", "Esc goes back · 1–\(min(slots.count, 9)) pick\(search)")
+            }
+            return ("ToolHUD", "Click a button", "Esc closes · 1–\(min(slots.count, 9))\(letters) pick\(search)")
         }
-        if fired != nil { return (slot.name, slot.appName ?? "Keystroke", "Running…") }
-        return (slot.name, slot.appName ?? "Keystroke", slot.summary)
+        if fired != nil { return (slot.name, slot.sourceName, slot.mode == .folder ? "Opening…" : "Running…") }
+        return (slot.name, slot.sourceName, slot.summary)
     }
 }
 

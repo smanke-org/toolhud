@@ -48,6 +48,7 @@ enum Help {
         case .general: "getting-started"
         case .appearance: "looks"
         case .buttons: "buttons"
+        case .features: "features"
         case .triggers: "opening"
         case .activity: "activity"
         }
@@ -78,8 +79,10 @@ enum Help {
                 ("Tab / ⇧Tab", "Light the next or previous button"),
                 ("Scroll", "Light the next or previous button (and turn the Dial look)"),
                 ("Return or Space", "Run the lit button"),
+                ("/", "Search buttons, app features, app menus and shortcuts (when Type to search is on)"),
+                ("Space with nothing lit", "Run the last action again (when that's turned on)"),
                 (",", "Open Settings"),
-                ("Esc", "Close the HUD"),
+                ("Esc", "Close the HUD, or go back out of a folder or the search"),
                 ("{shortcut} again", "Close the HUD"),
                 ("Gear button", "Open Settings"),
             ]),
@@ -90,16 +93,43 @@ enum Help {
         HelpTopic(id: "buttons", title: "Buttons", symbol: "square.grid.2x2", blocks: [
             .text("Settings › Buttons lists the ring's buttons in order; button 1 sits at the top and the rest follow clockwise. Drag to reorder, and use + and − to set how many there are, from 2 to 12. Fewer buttons are faster to aim at. Right-click a button to test, duplicate or delete it (Delete asks first); the Delete key also deletes the selected button."),
             .heading("What a button can do"),
+            .text("Choose under When chosen:"),
             .keys([
-                ("App feature", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens, CaptureLens or another supported app"),
+                ("Lens action", "Run a feature of TextLens, ClickLens, PasteLens, DiskLens, ExpansionLens, CaptureLens or another supported app"),
                 ("Keystroke", "Press keys for you, in the app you were using or one you choose"),
+                ("Shortcut", "Run a shortcut from the Shortcuts app"),
+                ("Open", "Open a web page, or a file, folder or app"),
+                ("Type text", "Type or paste a piece of text; pasting puts your clipboard back afterwards"),
+                ("Menu item", "Choose a menu item, such as File > Export…, in the app you were using or one you pick. Choose… reads a running app's menus for you"),
+                ("Script", "Run an AppleScript or a shell command in the background"),
+                ("Steps", "Run several of these in turn, with a wait after each"),
+                ("Folder", "Open a smaller ring of more buttons (when folders are on)"),
+                ("App menu", "Show one of our apps' menus at the pointer (when app menu buttons are on)"),
             ]),
+            .heading("Steps"),
+            .text("A Steps button holds up to 12 steps. Edit… sets what each one does, and Then wait gives an app time to catch up before the next step. The ⋯ menu moves, duplicates or removes a step."),
             .heading("Keystroke buttons"),
             .text("Turn on ⌘ ⌥ ⌃ ⇧ with the toggles, then type the keys: K means the K key. Type several keys to press them one after another. Special Keys adds keys you can't type, such as arrows, Return or [F5]. \"Send to\" picks the app that receives them."),
             .heading("Looks and sharing"),
             .text("Each button has an SF Symbol icon (Choose… to browse) and a color; App color uses the app's own. Test This Button runs it without opening the HUD. Export Ring… saves your buttons, button pad and look to a ring file to keep or share; Import Ring… loads one."),
             .heading("The button pad"),
             .text("With the button pad on, a Ring / Pad switch sits above the list. Pad holds the pad's own buttons, from 1 to 8, which run on A, S, D, F, G, H, J and K."),
+        ]),
+
+        HelpTopic(id: "features", title: "Features", symbol: "switch.2", blocks: [
+            .text("Settings › Features turns on extras for people who like to customize. Only Type to search starts on; the rest wait until you want them, and turning one off keeps the buttons you've made."),
+            .heading("Type to search"),
+            .text("With the HUD open, press / and type. The search finds your buttons (every app's ring and folder included), every feature of your installed apps, items in the menus gathered in ToolHUD's menu, and shortcuts from the Shortcuts app. ↑ ↓ choose, Return runs, Delete on an empty search or Esc goes back to the buttons."),
+            .heading("Run the last action again"),
+            .text("Point at the middle of the HUD to see what ran last, then click, or press Space with no button lit. Shortcuts and scripts can open toolhud://repeat."),
+            .heading("Folder buttons"),
+            .text("Choose Folder under When chosen, then Edit Folder… to fill it with up to 12 buttons. In the HUD, the folder's buttons take the ring's place; Esc or Delete comes back out."),
+            .heading("A different ring for each app"),
+            .text("At the top of Buttons, + adds an app, starting from a copy of your usual buttons. While that app is in front, the HUD shows its ring (and its pad); everywhere else, the usual one. The menu above the list switches which ring you're editing, and − removes an app's ring."),
+            .heading("App menu buttons"),
+            .text("An App menu button shows one of our apps' menus right at the pointer, the same menu as in ToolHUD's menu bar item. The app has to be running with its menu gathered into ToolHUD's."),
+            .heading("Show which features are on"),
+            .text("Buttons for features that switch on and off, such as ClickLens's spotlight, ExpansionLens, NetworkToggle's Wi-Fi or AudioLens's mute, get a small green light while they're on. Older versions of those apps don't report it, so their buttons show no light."),
         ]),
 
         HelpTopic(id: "apps", title: "Supported Apps", symbol: "app.badge", blocks: [
@@ -111,7 +141,9 @@ enum Help {
                 ("DiskLens", "Scan a disk, open DiskLens (1.0.7 or later)"),
                 ("ExpansionLens", "Quick search, new snippet, pause or resume"),
                 ("CaptureLens", "Capture the screen, a window or an area, capture again, open the library"),
-                ("M3 Tracker, NetworkToggle, StayMounted", "Their own actions, when installed in /Applications"),
+                ("AudioLens", "Turn the playing app up or down, mute it, switch outputs"),
+                ("BatteryLens", "Show battery levels, refresh, devices"),
+                ("M3 Tracker, NetworkToggle, StayMounted, WindowKeeper, DockMirror and others", "Their own actions, when installed in /Applications"),
             ]),
             .tip("Other apps can join by listing their actions in their Info.plist; ToolHUD finds them in /Applications."),
         ]),
@@ -129,6 +161,13 @@ enum Help {
                 ("None", "Keyboard only"),
             ]),
             .text("Mouse triggers need Accessibility permission. Settings › Appearance › Open at chooses whether the HUD opens at the pointer or the center of the screen."),
+            .heading("More ways"),
+            .keys([
+                ("Double-tap", "Press ⌘, ⌥, ⌃ or ⇧ twice quickly on its own. Holding it for a shortcut never counts"),
+                ("Screen corner", "Push the pointer into a corner and rest there; set how long with \"Rest for\""),
+                ("Shortcuts app", "The Show ToolHUD action, with an app's ring or a folder by name, and Run ToolHUD's Last Action Again"),
+                ("toolhud://show", "Open the HUD from a script; add ?ring=Safari for an app's ring or a folder"),
+            ]),
         ]),
 
         HelpTopic(id: "looks", title: "Looks", symbol: "paintpalette", blocks: [

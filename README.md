@@ -24,14 +24,18 @@ Requires macOS 26 or later.
 - **A ring at your pointer**: press ⌃⌥⌘Space or ⌥ + right-click in any app and a ring of 2 to 12 buttons opens around the pointer. Click a button or press its number; letting go of the shortcut or the mouse never runs anything.
 - **Lens actions**: buttons run features of our other apps directly, through their URL schemes: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick Paste, search ExpansionLens snippets and more. They keep working if you change those apps' shortcuts.
 - **Keystrokes**: a button can press any key combination, or several in a row, in the app you were using or in an app you choose.
+- **More kinds of buttons**: run a shortcut from the Shortcuts app, open a web page, file, folder or app, type or paste a piece of text, choose a menu item in any app, or run an AppleScript or shell command. A Steps button runs several of these in turn, with a wait after each.
+- **Type to search**: press / in the HUD and type to find any button, any feature of your apps, any item in your apps' menus, or any shortcut.
+- **Extras for power users** (Settings › Features, off until you want them): folder buttons that open a smaller ring, a different ring for each app, running the last action again from the HUD's center, app menu buttons, and green lights on buttons whose feature is on.
 - **Ten looks**: Halo, Orbit, Dial, Stargate, Red Alert, Constellation, Glass Pills and Planetary rings, or the Command Deck and Hive button hubs. Opacity, size, where it opens, a sound and a trackpad haptic are adjustable.
 - **Button pad**: up to 8 more buttons beside the HUD, drawn to match its look, that run on A, S, D, F, G, H, J and K.
 - **Mouse triggers**: open the HUD with ⌥ + right-click, by holding the right button, with the middle button, or with either side button.
+- **More ways to open it**: double-tap ⌘, ⌥, ⌃ or ⇧, rest the pointer in a screen corner, or use the Show ToolHUD action in the Shortcuts app.
 - **Shareable rings**: export your buttons, button pad and look to a `.toolhudring` file, and import one to keep or share.
 - **Your apps' menus**: while ToolHUD runs, our other apps can leave the menu bar and appear as submenus of ToolHUD's menu.
 - **Activity**: Settings › Activity graphs how many actions you've run, on this Mac or all your Macs. Only the numbers are kept, never which buttons you ran.
 - **Encrypted sync**: your buttons, look, shortcut and triggers follow you to every Mac on the same iCloud account, end-to-end encrypted with your sync passphrase.
-- **Automation**: `toolhud://show` opens the HUD and `toolhud://settings` opens Settings.
+- **Automation**: `toolhud://show` opens the HUD (`?ring=` an app's ring or a folder), `toolhud://repeat` runs the last action again, and the Shortcuts app gets Show ToolHUD and Run ToolHUD's Last Action Again.
 
 ## Screenshots
 
@@ -59,7 +63,9 @@ Requires macOS 26 or later.
 | 1–9, 0 | Run button 1–10 while the HUD is open. |
 | A S D F G H J K | Run the button pad, first to last. |
 | ← → ↑ ↓, Tab | Move between buttons; Return runs the lit one. |
-| Esc | Close the HUD. |
+| / | Search buttons, app features, app menus and shortcuts. |
+| Space, or click the center | Run the last action again (when turned on in Features). |
+| Esc | Close the HUD, or go back out of a folder or the search. |
 | ⚙ or , | Open Settings. Every look has a small gear; click it, or press comma. |
 
 A button runs only when you click right on it (a few points' margin forgives a near miss)
@@ -85,8 +91,42 @@ app's color) and one of two actions, chosen per button:
   with the same modifiers (⌘K then ⌘S). Return, Tab, the arrows, F-keys and the like are in
   the Special Keys menu.
 
+- **Shortcut**: runs a shortcut from the Shortcuts app.
+- **Open**: opens a web address, or a file, folder or app you choose.
+- **Type text**: types the text into the app you were using, or pastes it and puts your
+  clipboard back afterwards (marked transient, so clipboard managers skip it).
+- **Menu item**: chooses a menu item such as `File > Export…` in the app you were using or one
+  you pick, through Accessibility. Choose… reads a running app's menus so you can pick one.
+- **Script**: runs an AppleScript or a shell command (`zsh -l`) in the background, and says so
+  if it fails.
+- **Steps**: up to 12 of the kinds above, run in turn, each followed by a wait you set.
+- **Folder** and **App menu**: open a smaller ring of up to 12 buttons, or show one of our
+  apps' menus at the pointer. Each is turned on in Settings › Features.
+
+Keystrokes, typed text and menu items sent to a particular app wait until that app is really
+in front, and send nothing if it doesn't come forward.
+
 Rings can be exported to a `.toolhudring` file and imported again, to keep or to share. A
 ring file includes the button pad when it's on.
+
+## Features
+
+Settings › Features holds the extras. Type to search starts on; the rest start off, so the HUD
+stays simple until you want more:
+
+- **Type to search**: press / with the HUD open. ↑ ↓ choose, Return runs, Esc goes back.
+- **Run the last action again**: point at the middle of the HUD to see what ran last, then
+  click it or press Space.
+- **Folder buttons**: a button opens a smaller ring in the HUD's place; Esc or Delete comes
+  back out.
+- **A different ring for each app**: + at the top of Buttons adds an app, starting from a copy
+  of your usual buttons. That app gets its own ring and pad while it's in front.
+- **App menu buttons**: show one of our apps' menus (the one gathered into ToolHUD's menu) at
+  the pointer.
+- **Show which features are on**: buttons for on/off features (ClickLens's spotlight,
+  ExpansionLens, NetworkToggle's Wi-Fi, AudioLens's mute and others) get a green light while
+  they're on. Apps report it with a distributed notification; the shared code is in
+  `Shared/ToolHUDFeatureStates.swift`.
 
 ### For our other apps
 
@@ -149,7 +189,8 @@ the developer can read your settings.
 
 ToolHUD has no account, analytics or tracking. The only connection it makes on its own is to
 GitHub, to check for updates. Accessibility access is used only to watch the mouse button you
-chose as a trigger and to press the keys your buttons send.
+chose as a trigger and the modifier key you double-tap, and to press the keys, type the text
+and choose the menu items your buttons send.
 
 ## Updates
 
@@ -158,7 +199,17 @@ installs them automatically when you're not using it, asks first, or doesn't che
 
 ## Automation
 
-`toolhud://show` opens the HUD and `toolhud://settings` opens Settings.
+| URL | What it does |
+|---|---|
+| `toolhud://show` | Open the HUD in the middle of the screen |
+| `toolhud://show?ring=Safari` | Open an app's ring, or a folder button, by name |
+| `toolhud://repeat` | Run the last action again |
+| `toolhud://settings` | Open Settings |
+
+The Shortcuts app also offers **Show ToolHUD** (with an optional ring or folder name) and
+**Run ToolHUD's Last Action Again**. Besides the keyboard shortcut and mouse trigger, the HUD
+can open on a double-tap of ⌘, ⌥, ⌃ or ⇧, or when the pointer rests in a screen corner
+(Settings › Triggers).
 
 ## Build from source
 

@@ -35,6 +35,8 @@
 	<string>26.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Script buttons you make can control other apps, such as telling Safari to open a page.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Steve Manke</string>
 </dict>

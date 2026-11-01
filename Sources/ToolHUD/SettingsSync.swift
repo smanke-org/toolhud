@@ -354,6 +354,7 @@ final class SettingsSync {
         AutoUpdater.shared.interval = UpdateInterval.current
         HotKeyCenter.shared.apply()
         MouseTriggers.shared.apply()
+        ExtraTriggers.shared.apply()
         PresenceSettings.shared.reload()
         localModified = remote.updatedAt
         noteSynced(remote)

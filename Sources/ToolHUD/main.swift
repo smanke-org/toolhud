@@ -51,9 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         HUDController.shared.start()
         HotKeyCenter.shared.apply()
-        AccessibilityTrust.shared.onChange = { MouseTriggers.shared.apply() }
+        AccessibilityTrust.shared.onChange = {
+            MouseTriggers.shared.apply()
+            ExtraTriggers.shared.apply()
+        }
         AccessibilityTrust.shared.start()
         MouseTriggers.shared.apply()
+        ExtraTriggers.shared.apply()
 
         setUpStatusItem()
         MenuHubHost.shared.apply()
@@ -134,13 +138,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return .terminateNow
     }
 
-    /// `toolhud://show` opens the HUD and `toolhud://settings` opens Settings, for Shortcuts,
-    /// scripts and our other apps.
+    /// `toolhud://show` opens the HUD (`?ring=Safari` an app's ring or a folder, by name),
+    /// `toolhud://repeat` runs the last action again, and `toolhud://settings` opens
+    /// Settings, for Shortcuts, scripts and our other apps.
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls where url.scheme == "toolhud" {
             switch url.host {
-            case "show": showHUD()
-            default: showSettings()
+            case "show":
+                let name = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "ring" }?.value
+                guard let name else {
+                    showHUD()
+                    continue
+                }
+                let prefs = Preferences.shared
+                guard let ring = RingLookup.find(name, appRings: prefs.appRingsEnabled ? prefs.appRings : [],
+                                                 buttons: prefs.foldersEnabled ? prefs.allButtons : []) else {
+                    Toast.show("ToolHUD has no ring or folder called “\(name)”.", symbol: "questionmark.circle")
+                    continue
+                }
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { HUDController.shared.show(atScreenCenter: true, ring: ring) }
+                }
+            case "repeat":
+                HUDController.shared.repeatLast()
+            default:
+                showSettings()
             }
         }
     }

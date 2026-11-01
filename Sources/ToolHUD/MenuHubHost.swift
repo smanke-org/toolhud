@@ -76,7 +76,12 @@ final class MenuHubHost: NSObject, NSMenuDelegate {
 
     /// The running apps that have handed their menu to ToolHUD, by name.
     func guests() -> [NSRunningApplication] {
-        guard port != nil else { return [] }
+        #if DEBUG
+        let hosting = port != nil || DebugHooks.pretendHosting
+        #else
+        let hosting = port != nil
+        #endif
+        guard hosting else { return [] }
         return NSWorkspace.shared.runningApplications
             .filter { app in
                 guard let id = app.bundleIdentifier, id.hasPrefix("com.smanke."), id != Bundle.main.bundleIdentifier else { return false }
@@ -177,6 +182,66 @@ final class MenuHubHost: NSObject, NSMenuDelegate {
         guard let id = sender.representedObject as? String,
               let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return }
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    // MARK: - Search and App menu buttons
+
+    struct SearchItem {
+        var bundleID: String
+        var appName: String
+        var title: String
+        /// The submenus it's in, outermost first.
+        var parents: [String]
+        var path: String
+    }
+
+    /// Every item the guest apps' menus offer now, for the HUD's search: enabled, with a
+    /// title, and not a submenu itself.
+    func searchableItems() -> [SearchItem] {
+        var found: [SearchItem] = []
+        for app in guests() {
+            guard let id = app.bundleIdentifier, let data = send(.menu, to: id),
+                  let items = try? JSONDecoder().decode([HubItem].self, from: data) else { continue }
+            let name = Self.name(of: app)
+            func walk(_ items: [HubItem], _ parents: [String]) {
+                for item in items where !item.isSeparator && !item.isAlternate {
+                    let title = item.title.trimmingCharacters(in: .whitespaces)
+                    if let children = item.children {
+                        walk(children, title.isEmpty ? parents : parents + [title])
+                    } else if item.isEnabled, !title.isEmpty {
+                        found.append(SearchItem(bundleID: id, appName: name, title: title, parents: parents, path: item.path))
+                    }
+                }
+            }
+            walk(items, [])
+        }
+        return found
+    }
+
+    /// Runs one of an app's items, as picking it from ToolHUD's menu does.
+    func invoke(bundleID: String, path: String) {
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+            NSApp.yieldActivation(to: app)
+        }
+        _ = send(.invoke, to: bundleID, data: Data(path.utf8), awaitReply: false)
+    }
+
+    /// Whether the app is sharing its menu with ToolHUD now.
+    func isGuest(_ bundleID: String) -> Bool {
+        port != nil && MenuHub.portExists(MenuHub.appPortName(bundleID))
+    }
+
+    /// Shows an app's menu at the pointer, for an App menu button. False if the app isn't
+    /// sharing its menu or didn't answer.
+    @discardableResult
+    func popUpMenu(for bundleID: String, title: String) -> Bool {
+        guard isGuest(bundleID), let data = send(.menu, to: bundleID),
+              let items = try? JSONDecoder().decode([HubItem].self, from: data) else { return false }
+        let menu = NSMenu(title: title)
+        menu.autoenablesItems = false
+        fill(menu, with: items, bundleID: bundleID)
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        return true
     }
 
     /// Asks an app's port, waiting half a second at most for the answer.

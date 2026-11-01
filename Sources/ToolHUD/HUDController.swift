@@ -33,6 +33,20 @@ final class HUDModel {
     var dialIndex = 0
     /// The Size setting.
     var scale = 1.0
+    /// What the readout says while no button is lit, when there's something to say, such
+    /// as the center running the last action again.
+    var hint: (title: String, app: String, detail: String)?
+    /// / opens the search.
+    var searchAvailable = false
+    /// The open folder's name, while a folder's buttons are showing.
+    var folderName: String?
+    /// The search card is up, with what's been typed and what it found.
+    var searching = false
+    var query = ""
+    var results: [SearchResult] = []
+    var resultIndex = 0
+    /// Buttons show whether their feature is on.
+    var showsStateLights = false
 
     init() {}
 
@@ -149,6 +163,17 @@ final class HUDController {
     private var lastScroll = Date.distantPast
     /// The keys that run pad buttons, A S D F… where the current keyboard layout puts them.
     private var padKeyCodes = DefaultPad.usKeyCodes
+    /// The rings under the open folder, to go back to.
+    private var levels: [Level] = []
+    /// Everything search can find, gathered when the search opens.
+    private var searchIndex: [SearchResult] = []
+
+    private struct Level {
+        var slots: [Slot]
+        var padSlots: [Slot]
+        var padPosition: PadPosition?
+        var folderName: String?
+    }
 
     private static let tick = 1.0 / 60
 
@@ -181,13 +206,33 @@ final class HUDController {
         if isShowing { dismiss() } else { show() }
     }
 
-    /// Opens the HUD at the pointer (or the screen's center, per Settings).
-    func show(atScreenCenter forceCenter: Bool = false) {
+    /// Opens the HUD at the pointer (or the screen's center, per Settings), with the ring
+    /// for the app in front, or the one `ring` names.
+    func show(atScreenCenter forceCenter: Bool = false, ring: RingLookup.Match? = nil) {
         let prefs = Preferences.shared
+        #if DEBUG
+        DebugHooks.trace("show ring=\(String(describing: ring)) showing=\(isShowing)")
+        #endif
         guard !prefs.visibleSlots.isEmpty else { return }
-        model.slots = prefs.visibleSlots
-        model.padSlots = prefs.visiblePadSlots
+        let appRing: AppRing? = {
+            switch ring {
+            case .app(let id): return prefs.appRings.first { $0.bundleID == id }
+            case .usual, .folder: return nil
+            case nil: return prefs.appRing(for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+            }
+        }()
+        model.slots = appRing?.visibleSlots ?? prefs.visibleSlots
+        model.padSlots = appRing?.visiblePadSlots ?? prefs.visiblePadSlots
         model.padPosition = prefs.padEnabled ? prefs.padPosition : nil
+        model.folderName = nil
+        model.hint = nil
+        model.searching = false
+        model.query = ""
+        model.results = []
+        model.searchAvailable = prefs.searchEnabled
+        model.showsStateLights = prefs.stateLightsEnabled
+        levels = []
+        if prefs.stateLightsEnabled { FeatureStates.shared.requestRefresh() }
         model.visualization = prefs.visualization
         #if DEBUG
         if let look = DebugHooks.look { model.visualization = look }
@@ -235,11 +280,7 @@ final class HUDController {
 
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        // The panel covers the drawing, which grows to one side for the pad, plus room
-        // for the shadow.
-        let box = HUDLayout.drawingBounds(pad: model.pad), margin = HUDRootView.shadowMargin
-        panel.setFrame(NSRect(x: center.x + box.minX * scale - margin, y: center.y - box.maxY * scale - margin,
-                              width: box.width * scale + margin * 2, height: box.height * scale + margin * 2), display: false)
+        placePanel()
         panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
 
@@ -255,6 +296,53 @@ final class HUDController {
         }
         installKeyTap()
         step()
+        if case .folder(let folder) = ring { openFolder(folder) }
+    }
+
+    /// The panel covers the drawing, which grows to one side for the pad, plus room for the
+    /// shadow.
+    private func placePanel() {
+        guard let panel else { return }
+        let box = HUDLayout.drawingBounds(pad: model.pad), margin = HUDRootView.shadowMargin
+        panel.setFrame(NSRect(x: center.x + box.minX * scale - margin, y: center.y - box.maxY * scale - margin,
+                              width: box.width * scale + margin * 2, height: box.height * scale + margin * 2), display: true)
+    }
+
+    // MARK: - Folders
+
+    /// Shows a folder's buttons in place of the ring's; Esc comes back.
+    func openFolder(_ folder: Slot) {
+        let buttons = folder.folderButtons
+        guard isShowing, !buttons.isEmpty else {
+            if !isShowing { show(ring: .folder(folder)) }
+            return
+        }
+        levels.append(Level(slots: model.slots, padSlots: model.padSlots, padPosition: model.padPosition,
+                            folderName: model.folderName))
+        enter(slots: buttons, padSlots: [], padPosition: nil, folderName: folder.name)
+    }
+
+    /// Back out of the open folder. False when there's none.
+    private func closeFolder() -> Bool {
+        guard let level = levels.popLast() else { return false }
+        enter(slots: level.slots, padSlots: level.padSlots, padPosition: level.padPosition, folderName: level.folderName)
+        return true
+    }
+
+    private func enter(slots: [Slot], padSlots: [Slot], padPosition: PadPosition?, folderName: String?) {
+        model.slots = slots
+        model.padSlots = padSlots
+        model.padPosition = padPosition
+        model.folderName = folderName
+        model.highlighted = nil
+        model.fired = nil
+        model.hint = nil
+        model.dialIndex = 0
+        model.time = 0
+        model.pillWidths = [:]
+        closing = false
+        keyboardPointer = nil
+        placePanel()
     }
 
     func dismiss() {
@@ -280,6 +368,9 @@ final class HUDController {
         model.highlighted = nil
         model.fired = nil
         model.gearHovered = false
+        model.searching = false
+        model.hint = nil
+        levels = []
     }
 
     /// The keys the HUD answers to. Others pass through to the app in front.
@@ -317,7 +408,17 @@ final class HUDController {
 
     /// From the key tap: whether the HUD used the key.
     fileprivate func tappedKey(_ event: NSEvent) -> Bool {
-        guard isShowing, !closing, Self.hudKeys.contains(event.keyCode) || padIndex(forKey: event.keyCode) != nil else { return false }
+        guard isShowing, !closing else { return false }
+        if model.searching {
+            // Typing goes to the search, Option for accented letters included; ⌘ and ⌃
+            // keys still belong to someone else.
+            guard event.modifierFlags.intersection([.command, .control]).isEmpty else { return false }
+            key(event)
+            return true
+        }
+        let wanted = Self.hudKeys.contains(event.keyCode) || padIndex(forKey: event.keyCode) != nil
+            || isSearchKey(event) || (event.keyCode == KeyCode.delete && !levels.isEmpty)
+        guard wanted else { return false }
         // Keys with ⌘ ⌥ ⌃ belong to someone else (the HUD's own shortcut among them);
         // Shift is allowed for Shift-Tab.
         guard event.modifierFlags.intersection([.command, .option, .control]).isEmpty else { return false }
@@ -356,12 +457,53 @@ final class HUDController {
             guard hypot(mouse.x - at.x, mouse.y - at.y) > 4 else { return }
             keyboardPointer = nil
         }
+        if model.searching {
+            if let row = SearchCardLayout.row(at: local, rows: model.results.count), row != model.resultIndex {
+                model.resultIndex = row
+            }
+            return
+        }
         let onGear = HUDLayout.pointsAtGear(local, in: model.visualization, count: model.slots.count)
         if onGear != model.gearHovered { model.gearHovered = onGear }
-        setHighlight(onGear ? nil : button(at: local))
+        let hit = onGear ? nil : button(at: local)
+        setHighlight(hit)
+        let again = hit == nil && !onGear && pointsAtRepeat(local) ? LastAction.slot : nil
+        let hint = again.map { ("Run again", $0.name, "Click the center or press Space") }
+        if hint?.1 != model.hint?.app || (hint == nil) != (model.hint == nil) { model.hint = hint }
+    }
+
+    /// The center runs the last action again, when that's turned on and there is one.
+    private func pointsAtRepeat(_ local: HUDPoint) -> Bool {
+        Preferences.shared.repeatLastEnabled && LastAction.slot != nil
+            && RepeatTarget.contains(local, in: model.visualization)
+    }
+
+    /// Runs the last action again, from the center, Space or `toolhud://repeat`.
+    func repeatLast() {
+        guard let slot = LastAction.slot else {
+            Toast.show("Nothing has run yet to run again.", symbol: "arrow.clockwise")
+            return
+        }
+        if isShowing {
+            closing = true
+            model.hint = ("Running again", slot.name, "…")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                MainActor.assumeIsolated {
+                    HUDController.shared.dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                        MainActor.assumeIsolated { HUDController.shared.runChosen(slot) }
+                    }
+                }
+            }
+        } else {
+            runChosen(slot)
+        }
     }
 
     #if DEBUG
+    var debugPanel: NSPanel? { panel }
+    var debugLevels: Int { levels.count }
+
     /// Shows `visualization` with button `highlight` lit, ignoring the pointer, for screenshots.
     /// A negative `highlight` leaves the pointer in charge; -2 shows the gear lit.
     func debugShow(_ visualization: Visualization, highlight: Int) {
@@ -428,13 +570,24 @@ final class HUDController {
 
     /// A click runs the button it lands on, opens Settings on the gear, and closes the HUD
     /// anywhere else, even if the keyboard has lit a button.
-    func click() {
+    func click(at point: HUDPoint? = nil) {
         guard isShowing, !closing else { return }
-        let local = pointerInHUD
+        let local = point ?? pointerInHUD
+        if model.searching {
+            if let row = SearchCardLayout.row(at: local, rows: model.results.count) {
+                model.resultIndex = row
+                runResult()
+            } else if !SearchCardLayout.contains(local, rows: model.results.count) {
+                endSearch()
+            }
+            return
+        }
         if HUDLayout.pointsAtGear(local, in: model.visualization, count: model.slots.count) {
             openSettings()
         } else if let index = button(at: local) {
             fire(index)
+        } else if pointsAtRepeat(local) {
+            repeatLast()
         } else {
             dismiss()
         }
@@ -477,9 +630,22 @@ final class HUDController {
         return index
     }
 
+    /// The / key, wherever the keyboard layout puts it.
+    private func isSearchKey(_ event: NSEvent) -> Bool {
+        Preferences.shared.searchEnabled && event.charactersIgnoringModifiers == "/"
+    }
+
     func key(_ event: NSEvent) {
         guard isShowing, !closing else { return }
         let code = event.keyCode
+        if model.searching {
+            searchKey(event)
+            return
+        }
+        if isSearchKey(event) {
+            startSearch()
+            return
+        }
         if let digit = KeyCode.digits.firstIndex(of: code) {
             if digit < model.slots.count { fire(digit) } else { NSSound.beep() }
             return
@@ -490,11 +656,17 @@ final class HUDController {
         }
         switch code {
         case KeyCode.escape:
-            dismiss()
+            if !closeFolder() { dismiss() }
+        case KeyCode.delete:
+            _ = closeFolder()
         case KeyCode.comma:
             openSettings()
         case KeyCode.returnKey, KeyCode.keypadEnter, KeyCode.space:
-            if let index = model.highlighted { fire(index) }
+            if let index = model.highlighted {
+                fire(index)
+            } else if code == KeyCode.space, Preferences.shared.repeatLastEnabled {
+                repeatLast()
+            }
         case KeyCode.right, KeyCode.down:
             move(1)
         case KeyCode.left, KeyCode.up:
@@ -510,6 +682,16 @@ final class HUDController {
     /// underneath has the keyboard back.
     private func fire(_ index: Int) {
         guard let slot = model.slot(at: index), !closing else { return }
+        if slot.mode == .folder {
+            if Preferences.shared.foldersEnabled {
+                if Preferences.shared.haptics { NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now) }
+                openFolder(slot)
+                ActivityStore.shared.record()
+            } else {
+                Toast.show("Folders are turned off. Turn them on in ToolHUD Settings › Features.", symbol: "folder")
+            }
+            return
+        }
         closing = true
         model.highlighted = index
         model.fired = index
@@ -522,7 +704,101 @@ final class HUDController {
             MainActor.assumeIsolated {
                 HUDController.shared.dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                    MainActor.assumeIsolated { ActionRunner.run(slot) }
+                    MainActor.assumeIsolated { HUDController.shared.runChosen(slot) }
+                }
+            }
+        }
+    }
+
+    /// Runs what the user chose in the HUD, and remembers it for running again.
+    func runChosen(_ slot: Slot) {
+        LastAction.record(slot)
+        ActionRunner.run(slot)
+    }
+
+    // MARK: - Search
+
+    func startSearch() {
+        guard isShowing, !closing, Preferences.shared.searchEnabled else { return }
+        searchIndex = SearchSource.gather(currentRing: model.slots + model.padSlots)
+        model.searching = true
+        model.query = ""
+        model.highlighted = nil
+        model.gearHovered = false
+        model.hint = nil
+        updateResults()
+        // The Shortcuts app's list comes from a slower command, so it joins when ready.
+        SearchSource.loadShortcuts { names in
+            guard HUDController.shared.model.searching else { return }
+            HUDController.shared.searchIndex += SearchSource.shortcutResults(names)
+            HUDController.shared.updateResults()
+        }
+    }
+
+    private func endSearch() {
+        model.searching = false
+        model.query = ""
+        model.results = []
+    }
+
+    private func updateResults() {
+        model.results = SearchSource.rank(searchIndex, query: model.query)
+        model.resultIndex = min(model.resultIndex, max(model.results.count - 1, 0))
+        if model.query.isEmpty { model.resultIndex = 0 }
+    }
+
+    private func searchKey(_ event: NSEvent) {
+        switch event.keyCode {
+        case KeyCode.escape:
+            endSearch()
+        case KeyCode.returnKey, KeyCode.keypadEnter:
+            runResult()
+        case KeyCode.delete:
+            if model.query.isEmpty { endSearch() } else { model.query.removeLast(); updateResults() }
+        case KeyCode.down, KeyCode.tab where !event.modifierFlags.contains(.shift):
+            if !model.results.isEmpty { model.resultIndex = (model.resultIndex + 1) % model.results.count }
+            keyboardPointer = NSEvent.mouseLocation
+        case KeyCode.up, KeyCode.tab:
+            if !model.results.isEmpty { model.resultIndex = (model.resultIndex - 1 + model.results.count) % model.results.count }
+            keyboardPointer = NSEvent.mouseLocation
+        case KeyCode.left, KeyCode.right, KeyCode.forwardDelete:
+            break
+        default:
+            guard let typed = event.characters, !typed.isEmpty,
+                  typed.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) }) else { return }
+            model.query += typed
+            model.resultIndex = 0
+            updateResults()
+        }
+    }
+
+    private func runResult() {
+        #if DEBUG
+        DebugHooks.trace("runResult index=\(model.resultIndex) of \(model.results.count) closing=\(closing)")
+        #endif
+        guard model.results.indices.contains(model.resultIndex) else {
+            NSSound.beep()
+            return
+        }
+        let result = model.results[model.resultIndex]
+        ActivityStore.shared.record()
+        if case .button(let slot) = result.target, slot.mode == .folder, Preferences.shared.foldersEnabled {
+            endSearch()
+            openFolder(slot)
+            return
+        }
+        closing = true
+        if Preferences.shared.playSound { NSSound(named: "Pop")?.play() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            MainActor.assumeIsolated {
+                HUDController.shared.dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    MainActor.assumeIsolated {
+                        switch result.target {
+                        case .button(let slot): HUDController.shared.runChosen(slot)
+                        case .menuItem(let bundleID, let path): MenuHubHost.shared.invoke(bundleID: bundleID, path: path)
+                        }
+                    }
                 }
             }
         }

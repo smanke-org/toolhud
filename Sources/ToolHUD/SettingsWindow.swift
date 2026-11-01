@@ -4,7 +4,7 @@ import ToolHUDKit
 
 /// The panes, down the sidebar.
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, buttons, triggers, activity
+    case general, appearance, buttons, features, triggers, activity
 
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
@@ -13,6 +13,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .general: "gearshape"
         case .appearance: "circle.circle"
         case .buttons: "square.grid.2x2"
+        case .features: "switch.2"
         case .triggers: "cursorarrow.click.2"
         case .activity: "chart.bar.xaxis"
         }
@@ -82,6 +83,7 @@ struct SettingsRoot: View {
                 case .general: GeneralSettings()
                 case .appearance: AppearanceSettings()
                 case .buttons: ButtonsSettings()
+                case .features: FeaturesSettings()
                 case .triggers: TriggersSettings()
                 case .activity: ActivitySettings()
                 }
@@ -230,6 +232,55 @@ struct VisualizationCard: View {
     }
 }
 
+// MARK: - Features
+
+/// Extras for people who want more from the HUD. Search is on from the start; the rest
+/// wait until they're wanted, so the HUD stays simple for everyone else.
+struct FeaturesSettings: View {
+    @State private var prefs = Preferences.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: $prefs.searchEnabled) {
+                    Text("Type to search")
+                    Text("Press / while the HUD is open and type to find any button, any feature of your apps, any item in the menus gathered in ToolHUD's menu, or any shortcut from the Shortcuts app. Return runs the top match.")
+                }
+                Toggle(isOn: $prefs.repeatLastEnabled) {
+                    Text("Run the last action again")
+                    Text("Click the middle of the HUD, or press Space with no button lit, to run whatever you ran last.")
+                }
+            } header: {
+                Text("In the HUD")
+            }
+            Section {
+                Toggle(isOn: $prefs.foldersEnabled) {
+                    Text("Folder buttons")
+                    Text("A button can open a smaller ring of up to 12 more buttons. Choose Folder under When chosen in Buttons. Esc goes back.")
+                }
+                Toggle(isOn: $prefs.appRingsEnabled) {
+                    Text("A different ring for each app")
+                    Text("Give apps such as Safari or Xcode their own buttons. The HUD shows the ring for the app in front, and the usual buttons everywhere else. Add apps at the top of Buttons.")
+                }
+                Toggle(isOn: $prefs.appMenuButtonsEnabled) {
+                    Text("App menu buttons")
+                    Text("A button can show one of our apps' menus right at the pointer: the same menu as in ToolHUD's menu bar item.")
+                }
+                Toggle(isOn: $prefs.stateLightsEnabled) {
+                    Text("Show which features are on")
+                    Text("Buttons for features that switch on and off, such as ClickLens's spotlight, show a green light while they're on. Needs versions of our apps that report it.")
+                }
+            } header: {
+                Text("Buttons")
+            } footer: {
+                Text("These are for people who like to customize. Turned off, the HUD works as before, and buttons you've already made are kept.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
 // MARK: - General
 
 struct GeneralSettings: View {
@@ -370,6 +421,7 @@ struct GeneralSettings: View {
                 prefs.resetToDefaults()
                 HotKeyCenter.shared.apply()
                 MouseTriggers.shared.apply()
+                ExtraTriggers.shared.apply()
             }
         } message: {
             Text("Your buttons, look, shortcut, triggers and asking before quitting go back to how ToolHUD started. Where it appears, login and sync stay as they are.")

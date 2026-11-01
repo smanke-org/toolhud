@@ -41,6 +41,31 @@ cp "$BIN_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 [ -f "$ROOT/Resources/AppIcon.icns" ] && cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
+# The Shortcuts app's actions (ShortcutsIntents.swift). SwiftPM compiles the constant
+# values App Intents needs but doesn't extract the metadata, so run Xcode's extractor here.
+echo "==> Extracting App Intents metadata"
+INTENTS_WORK="$BUILD_PATH/appintents"
+rm -rf "$INTENTS_WORK"
+mkdir -p "$INTENTS_WORK/out"
+ls "$ROOT"/Sources/ToolHUD/*.swift > "$INTENTS_WORK/sources.txt"
+find "$BUILD_PATH" -path "*Release/ToolHUD-p.build/Objects-normal/arm64/*" -name "*.swiftconstvalues" \
+  -newer "$ROOT/Package.swift" > "$INTENTS_WORK/consts.txt"
+if [ ! -s "$INTENTS_WORK/consts.txt" ]; then
+  echo "No constant values from the release build; can't extract App Intents metadata." >&2
+  exit 1
+fi
+xcrun appintentsmetadataprocessor --output "$INTENTS_WORK/out" \
+  --toolchain-dir "$(dirname "$(dirname "$(dirname "$(xcrun --find swift)")")")" \
+  --module-name "$APP_NAME" --sdk-root "$(xcrun --show-sdk-path)" \
+  --xcode-version "$(xcodebuild -version | awk '/Build version/{print $3}')" \
+  --platform-family macOS --deployment-target 26.0 --target-triple arm64-apple-macos26.0 \
+  --source-file-list "$INTENTS_WORK/sources.txt" --swift-const-vals-list "$INTENTS_WORK/consts.txt" --quiet-warnings
+if ! grep -q ShowHUDIntent "$INTENTS_WORK/out/Metadata.appintents/extract.actionsdata"; then
+  echo "App Intents metadata is missing ToolHUD's actions." >&2
+  exit 1
+fi
+cp -R "$INTENTS_WORK/out/Metadata.appintents" "$APP/Contents/Resources/Metadata.appintents"
+
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")
 
 echo "==> Resolving signing identity"

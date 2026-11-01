@@ -62,6 +62,7 @@ struct CommandDeckView: View {
 
     private var footer: String {
         if model.gearHovered { return "› OPEN SETTINGS · BUTTONS, LOOKS AND TRIGGERS" }
+        if let hint = model.hint, model.fired == nil { return "› \(hint.title.uppercased()) · \(hint.detail.uppercased())" }
         guard let slot = model.focusSlot else { return "› AWAITING INPUT · PRESS 1–\(min(model.slots.count, 9))" }
         if model.fired != nil { return "▶ EXECUTED \(slot.name.uppercased())" }
         return "› \(slot.summary.uppercased())"
@@ -69,8 +70,12 @@ struct CommandDeckView: View {
 
     private func keycap(_ s: SlotInfo) -> some View {
         let shortcut: String = {
-            if s.slot.mode == .keystroke { return s.slot.keySequence?.display ?? "—" }
-            return "↗ " + (s.slot.appName ?? "").uppercased()
+            switch s.slot.mode {
+            case .keystroke: return s.slot.keySequence?.display ?? "—"
+            case .lens: return "↗ " + (s.slot.appName ?? "").uppercased()
+            case .folder: return "▸ FOLDER"
+            default: return "↗ " + s.slot.sourceName.uppercased()
+            }
         }()
         return ZStack(alignment: .topLeading) {
             Chamfer(cut: 12)

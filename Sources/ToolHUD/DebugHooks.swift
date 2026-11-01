@@ -117,9 +117,22 @@ enum DebugHooks {
         NSScreen.screens.first { $0.backingScaleFactor >= 2 } ?? NSScreen.main
     }
 
+    /// The menu hub acts as if it were hosting, so a staging run can read the guest apps'
+    /// menus (read-only) while the installed ToolHUD holds the real port.
+    static var pretendHosting: Bool { ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_PRETEND_HOSTING"] != nil }
+
     /// Starts a staging run if one was asked for; returns whether it did.
     static func run() -> Bool {
         let env = ProcessInfo.processInfo.environment
+        if let scenario = env["TOOLHUD_DEBUG_SCENARIO"] {
+            // From a timer, not the main queue: blocks the HUD puts on the main queue then
+            // still run while the scenario waits for them.
+            let start = Timer(timeInterval: 1, repeats: false) { _ in
+                MainActor.assumeIsolated { DebugScenarios.run(scenario) }
+            }
+            RunLoop.main.add(start, forMode: .common)
+            return true
+        }
         if let how = env["TOOLHUD_DEBUG_QUIT_TEST"] {
             trace("started policy \(NSApp.activationPolicy().rawValue) active \(NSApp.isActive)")
             DispatchQueue.main.asyncAfter(deadline: .now() + (Double(env["TOOLHUD_DEBUG_DELAY"] ?? "") ?? 1)) {
@@ -223,6 +236,7 @@ enum DebugHooks {
             return true
         }
         if let name = env["TOOLHUD_DEBUG_SETTINGS"], let pane = SettingsPane(rawValue: name) {
+            if env["TOOLHUD_DEBUG_DEMO_BUTTONS"] != nil { DebugScenarios.stageDemoButtons() }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 MainActor.assumeIsolated {
                     // Opened on Appearance first (General hangs in a staging run), then switched.
