@@ -45,7 +45,7 @@ Requires macOS 26 or later.
 <td width="50%"><img src="docs/images/toolhud-settings-buttons.jpg" alt="ToolHUD Settings on the Buttons pane, with the button list and the Capture text button set to a TextLens lens action"><br><sub><b>Buttons.</b> Pick an app feature or a keystroke for each button.</sub></td>
 </tr>
 <tr>
-<td width="50%" align="center"><img src="docs/images/toolhud-menu-hub.jpg" width="320" alt="ToolHUD's menu bar menu listing other apps as submenus, with ClickLens's submenu open"><br><sub><b>Your apps' menus.</b> Other apps as submenus of ToolHUD's menu.</sub></td>
+<td width="50%" align="center"><img src="docs/images/toolhud-menu-hub.jpg" width="420" alt="ToolHUD's menu bar menu listing other apps as submenus, with ClickLens's submenu open"><br><sub><b>Your apps' menus.</b> Other apps as submenus of ToolHUD's menu.</sub></td>
 <td width="50%"><img src="docs/images/toolhud-settings-activity.webp" alt="ToolHUD Settings on the Activity pane, with a bar chart of actions over 90 days and totals for three Macs"><br><sub><b>Activity.</b> How many actions you run, on this Mac or all your Macs.</sub></td>
 </tr>
 </table>
