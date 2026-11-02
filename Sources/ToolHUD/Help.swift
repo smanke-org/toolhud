@@ -87,7 +87,7 @@ enum Help {
                 ("{shortcut} again", "Close the HUD"),
                 ("Gear button", "Open Settings"),
             ]),
-            .text("The middle of the HUD names the button you're pointing at, the app it belongs to and what it does."),
+            .text("The middle of the HUD names the button you're pointing at, the app it belongs to and what it does, or the key that runs it."),
             .tip("Buttons 11 and 12 have no number key; click them or light them with the arrow keys. A number with no button beeps."),
         ]),
 
@@ -151,7 +151,7 @@ enum Help {
 
         HelpTopic(id: "opening", title: "Opening the HUD", symbol: "cursorarrow.click.2", blocks: [
             .heading("Keyboard"),
-            .text("Your shortcut is {shortcut}. Record a different one in Settings › Triggers; a warning appears if macOS or another app already uses it."),
+            .text("Your shortcut is {shortcut}. Record a different one in Settings › Triggers; a warning appears if macOS or another app already uses it. ShortcutsLens lists it under ToolHUD's name."),
             .heading("Mouse"),
             .text("Your mouse trigger is {mouse}. The HUD opens around the pointer in any app. Choices:"),
             .keys([

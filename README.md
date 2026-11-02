@@ -22,7 +22,7 @@ Requires macOS 26 or later.
 ## Features
 
 - **A ring at your pointer**: press ⌃⌥⌘Space or ⌥ + right-click in any app and a ring of 2 to 12 buttons opens around the pointer. Click a button or press its number; letting go of the shortcut or the mouse never runs anything.
-- **Lens actions**: buttons run features of our other apps directly, through their URL schemes: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick Paste, search ExpansionLens snippets and more. They keep working if you change those apps' shortcuts.
+- **Lens actions**: buttons run features of our other apps directly, through their URL schemes: capture text with TextLens, capture the screen with SnagAnything, turn on ClickLens's spotlight, open PasteLens's Quick Paste, search ExpansionLens snippets and more. They keep working if you change those apps' shortcuts.
 - **Keystrokes**: a button can press any key combination, or several in a row, in the app you were using or in an app you choose.
 - **More kinds of buttons**: run a shortcut from the Shortcuts app, open a web page, file, folder or app, type or paste a piece of text, choose a menu item in any app, or run an AppleScript or shell command. A Steps button runs several of these in turn, with a wait after each.
 - **Type to search**: press / in the HUD and type to find any button, any feature of your apps, any item in your apps' menus, or any shortcut.
@@ -78,7 +78,7 @@ right-click still opens the app's own menu), with the middle button, or with eit
 ## Buttons
 
 Settings › Buttons holds 2 to 12 buttons. Each has a name, an SF Symbol, a color (or its
-app's color) and one of two actions, chosen per button:
+app's color) and an action, chosen per button:
 
 - **Lens action**: asks one of our apps to run a feature directly, through its URL scheme
   (`textlens://capture`, `pastelens://quickpaste`). It keeps working if you change that app's
@@ -105,6 +105,9 @@ app's color) and one of two actions, chosen per button:
 
 Keystrokes, typed text and menu items sent to a particular app wait until that app is really
 in front, and send nothing if it doesn't come forward.
+
+A live preview at the top of Buttons shows the HUD with the button you're editing lit. Click a
+button in it to edit that one, and drag the grip under it to make it bigger or smaller.
 
 Rings can be exported to a `.toolhudring` file and imported again, to keep or to share. A
 ring file includes the button pad when it's on.
@@ -166,7 +169,8 @@ Its buttons have their own list under Pad in Settings › Buttons and run on A, 
 J and K.
 
 Opacity, size (small, medium, large), where it opens (pointer or screen center), a sound and a
-trackpad haptic are adjustable.
+trackpad haptic are adjustable. With Reduce Transparency on, every look is drawn solid; with
+Reduce Motion on, the HUD opens without its fly-out.
 
 ## Your apps' menus
 
@@ -196,7 +200,9 @@ and choose the menu items your buttons send.
 ## Updates
 
 ToolHUD checks for new versions once a day, or as often as you choose in Settings (a number of hours, days, weeks or months). In Settings › Sync & Updates you choose whether it
-installs them automatically when you're not using it, asks first, or doesn't check.
+installs them automatically when you're not using it, asks first, or doesn't check. The update
+window shows what's new in the latest releases, and What's New… beside Check Now shows the
+notes any time.
 
 ## Automation
 
