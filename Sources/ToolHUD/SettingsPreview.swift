@@ -11,7 +11,7 @@ struct HUDPreview: View {
 
     var body: some View {
         GeometryReader { geo in
-            let box = HUDLayout.drawingBounds(pad: model.pad)
+            let box = HUDLayout.previewBounds(look: model.visualization, count: model.slots.count, pad: model.pad)
             let fit = min(geo.size.width / box.width, geo.size.height / box.height, 1)
             let half = HUDLayout.canvas / 2
             ZStack(alignment: .topLeading) {

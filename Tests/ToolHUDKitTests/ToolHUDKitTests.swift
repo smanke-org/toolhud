@@ -229,6 +229,18 @@ import Testing
     #expect(HUDLayout.padTray(pad).center.y - HUDLayout.padTray(pad).height / 2 > bottom.y + HUDLayout.glassLabelDrop + 19)
 }
 
+@Test func thePreviewBoxHoldsEveryButtonAndThePad() {
+    for look in Visualization.allCases {
+        for position in PadPosition.allCases {
+            let pad = PadSpec(look: look, ringCount: 8, position: position, count: 4)
+            let box = HUDLayout.previewBounds(look: look, count: 8, pad: pad)
+            for c in HUDLayout.centers(for: look, count: 8) + HUDLayout.padItems(pad).map(\.center) {
+                #expect(c.x > box.minX && c.x < box.maxX && c.y > box.minY && c.y < box.maxY, "\(look) \(position)")
+            }
+        }
+    }
+}
+
 @Test func buttonsStayOnTheCanvas() {
     let limit = HUDLayout.canvas / 2
     for viz in Visualization.allCases {

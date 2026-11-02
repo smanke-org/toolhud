@@ -152,7 +152,8 @@ struct AppearanceSettings: View {
                     .frame(height: 220)
                     .frame(maxWidth: .infinity)
                     .scaleEffect(prefs.size.scale / HUDSize.large.scale)
-                    .background(PreviewBackdrop().clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
+                    .background(PreviewBackdrop())
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(alignment: .bottomLeading) {
                         Text("\(prefs.visualization.title) · \(prefs.size.title) · \(Int((prefs.opacity * 100).rounded()))%")
                             .font(.caption).foregroundStyle(.white.opacity(0.75))

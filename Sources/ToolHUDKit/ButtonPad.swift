@@ -220,6 +220,13 @@ extension HUDLayout {
         return Bounds(minX: -half, minY: -half, maxX: half, maxY: half).union(pad.map(padBounds))
     }
 
+    /// What the HUD actually draws: the look's own reach (names and keycaps included) and the
+    /// pad. Tighter than `drawingBounds`, whose canvas leaves room around most looks, so a
+    /// preview scaled to fit it shows the HUD as large as it can.
+    public static func previewBounds(look: Visualization, count: Int, pad: PadSpec?) -> Bounds {
+        lookExtent(look, count: count).union(pad.map(padBounds))
+    }
+
     /// The part of the HUD that must stay on screen: the look's buttons, and the pad.
     public static func visibleBounds(pad: PadSpec?, ringRadius: Double) -> Bounds {
         Bounds(minX: -ringRadius, minY: -ringRadius, maxX: ringRadius, maxY: ringRadius).union(pad.map(padBounds))

@@ -19,6 +19,8 @@ struct ButtonsSettings: View {
     /// Whose ring is being edited: "" for every app, else an app's bundle identifier.
     @State private var ringFor = ""
     @State private var confirmRemoveRing = false
+    /// The preview's height, set with the handle under it, per Mac.
+    @AppStorage("buttonsPreviewHeight") private var previewHeight = PreviewResizeHandle.standard
 
     /// The app ring being edited, while rings for each app are on.
     private var ringIndex: Int? {
@@ -172,8 +174,11 @@ struct ButtonsSettings: View {
             .frame(width: 260)
     }
 
-    /// The preview, then everything about the chosen button.
+    /// The preview, then everything about the chosen button. The handle under the preview
+    /// makes it taller or shorter, leaving the editor at least `editorRoom`.
     private var editorColumn: some View {
+        GeometryReader { geo in
+            let tallest = max(PreviewResizeHandle.shortest, geo.size.height - Self.editorRoom)
             VStack(spacing: 0) {
                 HUDPreview(model: preview) { picked in
                     if picked < ringSlotCount {
@@ -184,21 +189,27 @@ struct ButtonsSettings: View {
                         DispatchQueue.main.async { selection = picked - ringSlotCount }
                     }
                 }
-                .padding(10)
-                .frame(height: 240)
+                .padding(8)
+                .frame(height: min(previewHeight, tallest))
                 .frame(maxWidth: .infinity)
-                .background(PreviewBackdrop().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+                .background(PreviewBackdrop())
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(alignment: .bottomLeading) {
                     Text("Click a button to edit it")
                         .font(.caption).foregroundStyle(.white.opacity(0.7))
                         .padding(10)
                 }
                 .padding(.horizontal, 20).padding(.top, 14)
+                PreviewResizeHandle(height: $previewHeight, range: PreviewResizeHandle.shortest...tallest)
                 editorHeader
-                    .padding(.horizontal, 20).padding(.top, 14)
+                    .padding(.horizontal, 20)
                 SlotEditor(slot: slot, title: nil)
             }
+        }
     }
+
+    /// Room the button editor keeps below the preview, however far the handle is dragged.
+    private static let editorRoom = 240.0
 
     private var paneChanges: PaneChanges { PaneChanges(pane: self) }
 }
@@ -1394,5 +1405,48 @@ struct KeyLegendRow: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A grip under a preview that drags its height up or down, within `range`. Double-click
+/// goes back to the standard height.
+struct PreviewResizeHandle: View {
+    @Binding var height: Double
+    let range: ClosedRange<Double>
+    @State private var dragStart: Double?
+    @State private var hovering = false
+
+    static let standard = 320.0
+    static let shortest = 140.0
+
+    var body: some View {
+        Capsule()
+            .fill(Color.secondary.opacity(hovering || dragStart != nil ? 0.6 : 0.3))
+            .frame(width: 40, height: 5)
+            .frame(maxWidth: .infinity)
+            .frame(height: 18)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hovering = inside
+                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
+            // Measured in the window: the handle moves with the preview, so its own
+            // coordinates would count only half the drag.
+            .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                .onChanged { drag in
+                    let start = dragStart ?? min(height, range.upperBound)
+                    dragStart = start
+                    height = min(max(start + drag.translation.height, range.lowerBound), range.upperBound)
+                }
+                .onEnded { _ in dragStart = nil })
+            .onTapGesture(count: 2) { height = min(Self.standard, range.upperBound) }
+            .help("Drag to make the preview bigger or smaller. Double-click for the standard size.")
+            .accessibilityElement()
+            .accessibilityLabel("Preview size")
+            .accessibilityValue("\(Int(min(height, range.upperBound))) points")
+            .accessibilityAdjustableAction { direction in
+                let step = direction == .increment ? 40.0 : -40.0
+                height = min(max(min(height, range.upperBound) + step, range.lowerBound), range.upperBound)
+            }
     }
 }
