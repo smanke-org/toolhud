@@ -112,7 +112,7 @@ enum Help {
             .heading("Keystroke buttons"),
             .text("Turn on ⌘ ⌥ ⌃ ⇧ with the toggles, then type the keys: K means the K key. Type several keys to press them one after another. Special Keys adds keys you can't type, such as arrows, Return or [F5]. \"Send to\" picks the app that receives them."),
             .heading("Looks and sharing"),
-            .text("The preview at the top shows the HUD with the button you're editing lit; click a button in it to edit that one. Each button has an SF Symbol icon (Choose… to browse, or type any symbol name there) and a color; Auto, the first color, uses the app's own. Test (▶) runs it without opening the HUD, and the … menu beside it duplicates, resets or deletes it. The … menu under the list exports your buttons, button pad and look to a ring file to keep or share, or imports one."),
+            .text("The preview at the top shows the HUD with the button you're editing lit; click a button in it to edit that one, and drag the grip under it to make it bigger or smaller. Each button has an SF Symbol icon (Choose… to browse, or type any symbol name there) and a color; Auto, the first color, uses the app's own. Test (▶) runs it without opening the HUD, and the … menu beside it duplicates, resets or deletes it. The … menu under the list exports your buttons, button pad and look to a ring file to keep or share, or imports one."),
             .heading("The button pad"),
             .text("With the button pad on, a Ring / Pad switch sits above the list. Pad holds the pad's own buttons, from 1 to 8, which run on A, S, D, F, G, H, J and K."),
         ]),
