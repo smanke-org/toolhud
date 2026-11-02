@@ -99,11 +99,11 @@ struct ActivitySettings: View {
                 if !remotes.isEmpty {
                     Text("Each Mac's actions since ToolHUD started counting there. Every Mac with settings sync on is counted, through iCloud Drive › ToolHUD › Activity, encrypted like your settings. Only the numbers are shared. Deleting a Mac's file there removes it.")
                 } else if !settingsSync.isEnabled {
-                    Text("Turn on “Sync settings with your other Macs” in General to add up actions from every Mac that uses ToolHUD.")
+                    Text("Turn on “Sync settings with your other Macs” in Sync & Updates to add up actions from every Mac that uses ToolHUD.")
                 } else if !settingsSync.iCloudDriveAvailable {
                     Text("Turn on iCloud Drive to add up actions from your other Macs.")
                 } else if settingsSync.keyState != .ready {
-                    Text("Enter your sync passphrase in General to add up actions from your other Macs.")
+                    Text("Enter your sync passphrase in Sync & Updates to add up actions from your other Macs.")
                 } else {
                     Text("Actions from your other Macs are added here once ToolHUD on them has settings sync turned on.")
                 }

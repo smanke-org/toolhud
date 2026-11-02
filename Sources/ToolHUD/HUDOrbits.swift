@@ -40,7 +40,7 @@ struct ConstellationView: View {
                 }
                 .frame(width: 50, height: 50)
                 .scaleEffect((s.on ? 1.18 : 1) * max(t, 0.3))
-                .animation(.spring(response: 0.25, dampingFraction: 0.5), value: s.on)
+                .hudAnimation(.spring(response: 0.25, dampingFraction: 0.5), value: s.on)
                 .position(s.point)
                 .opacity(min(1, t * 1.5))
                 let below = Double(s.point.y) > HUDModel.middle + 1
@@ -148,7 +148,7 @@ struct GlassPillsView: View {
         .overlay(Capsule().strokeBorder(s.on ? s.color : Color.white.opacity(0.75), lineWidth: 1))
         .shadow(color: s.on ? s.color.opacity(0.45) : .black.opacity(0.18), radius: s.on ? 14 : 10, y: 6)
         .scaleEffect(s.on ? 1.08 : 1)
-        .animation(.spring(response: 0.22, dampingFraction: 0.55), value: s.on)
+        .hudAnimation(.spring(response: 0.22, dampingFraction: 0.55), value: s.on)
         .fixedSize()
         .onGeometryChange(for: Double.self) { $0.size.width } action: { model.pillWidths[s.index] = $0 }
     }
@@ -185,7 +185,7 @@ struct PlanetaryView: View {
                 .frame(width: size, height: size)
                 .opacity(s.on ? 1 : max(model.opacity, 0.45))
                 .scaleEffect(s.on ? 1.2 : 1)
-                .animation(.spring(response: 0.25, dampingFraction: 0.55), value: s.on)
+                .hudAnimation(.spring(response: 0.25, dampingFraction: 0.55), value: s.on)
                 .position(s.point)
                 SlotLabel(text: s.slot.name, on: s.on, size: 11, width: 110, offColor: Color(hex: "#F0ECE4").opacity(0.72))
                     .position(x: s.point.x, y: s.point.y + size / 2 + 12)

@@ -34,12 +34,26 @@ struct HUDRootView: View {
         .frame(width: box.width, height: box.height, alignment: .topLeading)
         .scaleEffect(model.scale)
         .frame(width: box.width * model.scale, height: box.height * model.scale)
-        // A tight contact shadow under a wide soft one, the same size at every Size
-        // setting. Drawn from the composited HUD so overlapping pieces cast one shadow.
-        .compositingGroup()
-        .shadow(color: .black.opacity(1.0), radius: 6)
-        .shadow(color: .black.opacity(0.8), radius: 50)
+        .modifier(HUDShadow(enabled: model.visualization != .liquidGlass))
         .frame(width: box.width * model.scale + Self.shadowMargin * 2, height: box.height * model.scale + Self.shadowMargin * 2)
+    }
+}
+
+/// A tight contact shadow under a wide soft one, the same size at every Size setting.
+/// Drawn from the composited HUD so overlapping pieces cast one shadow. Liquid Glass casts
+/// its own light shadows, and compositing it would flatten the glass.
+struct HUDShadow: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .compositingGroup()
+                .shadow(color: .black.opacity(1.0), radius: 6)
+                .shadow(color: .black.opacity(0.8), radius: 50)
+        } else {
+            content
+        }
     }
 }
 
@@ -60,6 +74,7 @@ struct HUDDrawing: View {
             case .constellation: ConstellationView(model: model)
             case .glassPills: GlassPillsView(model: model)
             case .planetary: PlanetaryView(model: model)
+            case .liquidGlass: LiquidGlassView(model: model)
             }
         }
         .frame(width: HUDLayout.canvas, height: HUDLayout.canvas)
@@ -123,7 +138,7 @@ extension HUDModel {
             return ("ToolHUD", "Click a button", "Esc closes · 1–\(min(slots.count, 9))\(letters) pick\(search)")
         }
         if fired != nil { return (slot.name, slot.sourceName, slot.mode == .folder ? "Opening…" : "Running…") }
-        return (slot.name, slot.sourceName, slot.summary)
+        return (slot.name, slot.sourceName, slot.readoutDetail)
     }
 }
 
@@ -230,7 +245,7 @@ struct SettingsGear: View {
                 .overlay(shape.strokeBorder(tint.opacity(on ? 0 : 0.22), lineWidth: 1))
                 .shadow(color: on ? tint.opacity(0.6) : .clear, radius: 8)
                 .scaleEffect(on ? 1.12 : 1)
-                .animation(.spring(response: 0.2, dampingFraction: 0.65), value: on)
+                .hudAnimation(.spring(response: 0.2, dampingFraction: 0.65), value: on)
                 .position(x: HUDModel.middle + gear.x, y: HUDModel.middle + gear.y)
                 .accessibilityLabel("Settings")
         }
@@ -252,7 +267,8 @@ struct SlotGlyph: View {
     }
 }
 
-/// The three lines in the middle: the button's name, its app and what it does.
+/// The lines in the middle: the button's name, its app, and what it does or, when that
+/// would only repeat the name, the key that runs it.
 struct CenterReadout: View {
     let model: HUDModel
     var titleFont: Font = .system(size: 17, weight: .semibold)
@@ -261,10 +277,11 @@ struct CenterReadout: View {
     var detailColor: Color = .white.opacity(0.62)
     var uppercase = false
     var width: Double = 150
+    var keyTint: Color = .white
 
     var body: some View {
         let r = model.readout
-        let tint = model.focusSlot?.tint.color ?? .white.opacity(0.7)
+        let tint = model.focusSlot?.tint.color ?? titleColor.opacity(0.7)
         VStack(spacing: 4) {
             Text(uppercase ? r.title.uppercased() : r.title)
                 .font(titleFont).foregroundStyle(titleColor)
@@ -272,9 +289,13 @@ struct CenterReadout: View {
             Text(uppercase ? r.app.uppercased() : r.app)
                 .font(.system(size: 11, weight: .semibold)).foregroundStyle(tint)
                 .lineLimit(1)
-            Text(r.detail)
-                .font(detailFont).foregroundStyle(detailColor)
-                .lineLimit(2).multilineTextAlignment(.center)
+            if !r.detail.isEmpty {
+                Text(r.detail)
+                    .font(detailFont).foregroundStyle(detailColor)
+                    .lineLimit(2).multilineTextAlignment(.center)
+            } else if let focus = model.focus {
+                SlotKeyCap(index: focus, label: model.keyName(of: focus), tint: keyTint)
+            }
         }
         .frame(width: width)
         .minimumScaleFactor(0.7)
@@ -290,12 +311,13 @@ struct SlotLabel: View {
     var font: Font.Design = .default
     var uppercase = false
     var offColor: Color = .white.opacity(0.82)
+    var onColor: Color = .white
 
     var body: some View {
         Text(uppercase ? text.uppercased() : text)
             .font(.system(size: size, weight: on ? .semibold : .medium, design: font))
             .tracking(uppercase ? 0.8 : 0)
-            .foregroundStyle(on ? Color.white : offColor)
+            .foregroundStyle(on ? onColor : offColor)
             .lineLimit(1)
             .minimumScaleFactor(0.65)
             .frame(width: width)
@@ -334,6 +356,23 @@ struct SlotKeyCap: View {
                 }
                 .accessibilityLabel("Key \(key)")
         }
+    }
+}
+
+/// A HUD animation that becomes an instant change while Reduce Motion is on.
+struct HUDAnimation<Value: Equatable>: ViewModifier {
+    let animation: Animation
+    let value: Value
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.animation(reduceMotion ? nil : animation, value: value)
+    }
+}
+
+extension View {
+    func hudAnimation<Value: Equatable>(_ animation: Animation, value: Value) -> some View {
+        modifier(HUDAnimation(animation: animation, value: value))
     }
 }
 

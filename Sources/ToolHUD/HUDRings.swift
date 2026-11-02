@@ -32,7 +32,7 @@ struct HaloView: View {
                 }
                 .offset(x: lift.x, y: lift.y)
                 .shadow(color: s.on ? s.color.opacity(0.6) : .clear, radius: 14)
-                .animation(.spring(response: 0.22, dampingFraction: 0.6), value: s.on)
+                .hudAnimation(.spring(response: 0.22, dampingFraction: 0.6), value: s.on)
             }
             Circle()
                 .fill(Color(white: 0.07).opacity(min(1, model.opacity + 0.12)))
@@ -77,7 +77,7 @@ struct OrbitView: View {
                 }
                 .frame(width: 64, height: 64)
                 .scaleEffect((s.on ? 1.14 : 1) * max(t, 0.2))
-                .animation(.spring(response: 0.25, dampingFraction: 0.55), value: s.on)
+                .hudAnimation(.spring(response: 0.25, dampingFraction: 0.55), value: s.on)
                 .position(x: x, y: y)
                 SlotLabel(text: s.slot.name, on: s.on, width: 110)
                     .position(x: x, y: y + 44)
@@ -136,7 +136,7 @@ struct DialView: View {
                 }
             }
             .rotationEffect(.degrees(-Double(model.dialIndex) * step))
-            .animation(.spring(response: 0.38, dampingFraction: 0.62), value: model.dialIndex)
+            .hudAnimation(.spring(response: 0.38, dampingFraction: 0.62), value: model.dialIndex)
 
             Path { p in
                 p.move(to: CGPoint(x: 290, y: 66)); p.addLine(to: CGPoint(x: 310, y: 66)); p.addLine(to: CGPoint(x: 300, y: 82))

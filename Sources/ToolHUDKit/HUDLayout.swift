@@ -102,6 +102,11 @@ public enum HUDLayout {
             for (i, c) in centers(for: .orbit, count: n).enumerated() {
                 add(i, inCircle(c, 32) || inRect(HUDPoint(c.x, c.y + 44), 90, 16), c)
             }
+        case .liquidGlass:
+            // So does the glass capsule holding the name and key.
+            for (i, c) in centers(for: .liquidGlass, count: n).enumerated() {
+                add(i, inCircle(c, 32) || inRect(HUDPoint(c.x, c.y + glassLabelDrop), 104, 38), c)
+            }
         case .constellation:
             for (i, c) in centers(for: .constellation, count: n).enumerated() {
                 let label = HUDPoint(c.x, c.y + (c.y > 1 ? 38 : -38))
@@ -159,7 +164,7 @@ public enum HUDLayout {
     public static func gearCenter(for visualization: Visualization, count: Int) -> HUDPoint? {
         switch visualization {
         case .halo: HUDPoint(0, 52)
-        case .orbit: HUDPoint(0, 78)
+        case .orbit, .liquidGlass: HUDPoint(0, 78)
         case .dial: HUDPoint(0, 90)
         case .stargate: HUDPoint(0, 94)
         case .redAlert: HUDPoint(0, 84)
@@ -187,7 +192,7 @@ public enum HUDLayout {
         let n = max(count, 0)
         switch visualization {
         case .halo: return ring(n, radius: 146)
-        case .orbit: return ring(n, radius: orbitRadius(n))
+        case .orbit, .liquidGlass: return ring(n, radius: orbitRadius(n))
         case .dial: return ring(n, radius: 160)
         case .stargate: return ring(n, radius: 222)
         case .redAlert: return ring(n, radius: 165)
@@ -206,6 +211,10 @@ public enum HUDLayout {
             return HUDPoint(p.x, p.y * yStretch)
         }
     }
+
+    /// How far below a Liquid Glass button its name capsule sits, clear of the button even
+    /// when it grows on hover, so the two pieces of glass never melt together.
+    public static let glassLabelDrop = 62.0
 
     public static func orbitRadius(_ count: Int) -> Double {
         count <= 4 ? 133 : count <= 8 ? 167 : 190

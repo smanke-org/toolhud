@@ -215,6 +215,20 @@ import Testing
     #expect(HUDLayout.button(at: HUDPoint(frame.center.x + 110, right.y), in: .glassPills, count: count, pillWidths: [2: 180]) == nil)
 }
 
+@Test func liquidGlassNameCapsulesCountAsTheirButtons() {
+    let count = 8
+    let bottom = HUDLayout.centers(for: .liquidGlass, count: count)[4]   // straight down
+    let label = HUDPoint(bottom.x + 45, bottom.y + HUDLayout.glassLabelDrop)
+    #expect(HUDLayout.button(at: label, in: .liquidGlass, count: count) == 4, "on the capsule's end")
+    #expect(HUDLayout.button(at: HUDPoint(label.x, label.y + 40), in: .liquidGlass, count: count) == nil, "below it")
+    // Between two buttons is nothing, as on the Orbit it's laid out like.
+    let c = HUDLayout.centers(for: .liquidGlass, count: count)
+    #expect(HUDLayout.button(at: HUDPoint((c[0].x + c[1].x) / 2, (c[0].y + c[1].y) / 2), in: .liquidGlass, count: count) == nil)
+    // A pad sits clear of the hanging capsules.
+    let pad = PadSpec(look: .liquidGlass, ringCount: count, position: .below, count: 4)
+    #expect(HUDLayout.padTray(pad).center.y - HUDLayout.padTray(pad).height / 2 > bottom.y + HUDLayout.glassLabelDrop + 19)
+}
+
 @Test func buttonsStayOnTheCanvas() {
     let limit = HUDLayout.canvas / 2
     for viz in Visualization.allCases {

@@ -135,7 +135,7 @@ struct HiveView: View {
                 .shadow(color: s.on ? s.color.opacity(0.7) : .clear, radius: 14)
                 .scaleEffect(s.on ? 1.1 : 1)
                 .zIndex(s.on ? 1 : 0)
-                .animation(.spring(response: 0.2, dampingFraction: 0.55), value: s.on)
+                .hudAnimation(.spring(response: 0.2, dampingFraction: 0.55), value: s.on)
                 .position(s.point)
             }
             ZStack {
@@ -154,7 +154,8 @@ struct HiveView: View {
             SettingsGear(model: model, size: 9, tint: Self.honey, litGlyph: Color(hex: "#14100A"))
             VStack(spacing: 4) {
                 Text(model.readout.title).font(.system(size: 17, weight: .bold)).foregroundStyle(Color(hex: "#FFF7E6"))
-                Text(model.focusSlot == nil && !model.gearHovered ? "Click a cell or press its number" : model.readout.detail)
+                Text(model.focusSlot == nil && !model.gearHovered ? "Click a cell or press its number"
+                     : model.readout.detail.isEmpty ? "Press \(model.keyName(of: model.focus ?? 0))" : model.readout.detail)
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(model.focusSlot?.tint.color ?? Self.honey.opacity(0.6))
             }

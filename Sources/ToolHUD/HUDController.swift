@@ -176,6 +176,9 @@ final class HUDController {
     }
 
     private static let tick = 1.0 / 60
+    /// Where the opening animations start: at the beginning, or already finished while
+    /// Reduce Motion is on.
+    private static var openingTime: Double { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 10 : 0 }
 
     func start() {
         HotKeyCenter.shared.onPress = { HUDController.shared.hotKeyPressed() }
@@ -242,11 +245,13 @@ final class HUDController {
             model.padSlots = Array((DebugHooks.sampleButtons ? DefaultPad.slots : prefs.padSlots).prefix(pad.count))
         }
         #endif
-        model.opacity = prefs.opacity
+        // Reduce Transparency draws every look solid; Reduce Motion opens it without the
+        // fly-out and keeps the planets still.
+        model.opacity = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency ? 1 : prefs.opacity
         model.highlighted = nil
         model.fired = nil
         model.gearHovered = false
-        model.time = 0
+        model.time = Self.openingTime
         model.dialIndex = 0
         closing = false
         keyboardPointer = nil
@@ -338,7 +343,7 @@ final class HUDController {
         model.fired = nil
         model.hint = nil
         model.dialIndex = 0
-        model.time = 0
+        model.time = Self.openingTime
         model.pillWidths = [:]
         closing = false
         keyboardPointer = nil
@@ -446,7 +451,8 @@ final class HUDController {
         let local = HUDPoint(Double(mouse.x - center.x) / scale, -Double(mouse.y - center.y) / scale)
 
         // The planets drift until the pointer moves in among them.
-        if model.visualization == .planetary, !pointerMoved || local.length > HUDLayout.planetOrbits.outer + 40 {
+        if model.visualization == .planetary, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+           !pointerMoved || local.length > HUDLayout.planetOrbits.outer + 40 {
             model.phase += Self.tick * 9
         }
         guard model.fired == nil else { return }

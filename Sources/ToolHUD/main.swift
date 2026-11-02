@@ -214,10 +214,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(item("About \(AppInfo.name)", #selector(showAbout)))
         menu.addItem(item("Our other apps…", #selector(showOtherApps)))
+        // The version is in About and Settings › Sync & Updates.
         menu.addItem(.separator())
-        let version = NSMenuItem(title: "\(AppInfo.name) \(AppInfo.displayVersion)", action: nil, keyEquivalent: "")
-        version.isEnabled = false
-        menu.addItem(version)
         menu.addItem(item("Quit \(AppInfo.name)", #selector(quit), key: "q"))
     }
 

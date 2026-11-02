@@ -141,6 +141,10 @@ final class WhatsNew {
     /// user asked for them.
     func present(on window: NSWindow, asked: Bool = false) {
         guard window.attachedSheet == nil, asked || pending != nil else { return }
+        #if DEBUG
+        // Snapshots of Settings panes, which the notes would cover.
+        if !asked, ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_SETTINGS"] != nil { return }
+        #endif
         let from = asked ? nil : pending.flatMap { $0.from.isEmpty ? nil : $0.from }
         let sheet = NSWindow(contentViewController: NSHostingController(rootView: WhatsNewSheet(from: from, offerDismiss: !asked) { [weak window] forGood in
             if !asked { WhatsNew.shared.dismiss(forGood: forGood) }

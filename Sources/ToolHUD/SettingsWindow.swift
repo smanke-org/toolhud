@@ -4,10 +4,10 @@ import ToolHUDKit
 
 /// The panes, down the sidebar.
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, buttons, features, triggers, activity
+    case general, appearance, buttons, features, triggers, sync, activity
 
     var id: String { rawValue }
-    var title: String { rawValue.capitalized }
+    var title: String { self == .sync ? "Sync & Updates" : rawValue.capitalized }
     var symbol: String {
         switch self {
         case .general: "gearshape"
@@ -15,6 +15,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .buttons: "square.grid.2x2"
         case .features: "switch.2"
         case .triggers: "cursorarrow.click.2"
+        case .sync: "arrow.triangle.2.circlepath"
         case .activity: "chart.bar.xaxis"
         }
     }
@@ -92,22 +93,21 @@ struct SettingsRoot: View {
                 case .buttons: ButtonsSettings()
                 case .features: FeaturesSettings()
                 case .triggers: TriggersSettings()
+                case .sync: SyncUpdatesSettings()
                 case .activity: ActivitySettings()
                 }
-                // The version in the middle, the round Help button in the corner, as macOS does.
-                ZStack {
-                    Text("\(AppInfo.name) \(AppInfo.displayVersion)")
-                        .font(.caption).foregroundStyle(.secondary)
-                    HStack {
-                        Spacer()
-                        HelpButton(topic: Help.topic(for: selection.pane)).fixedSize()
-                    }
+                // The round Help button in the corner, as macOS does. The version is in
+                // Sync & Updates.
+                HStack {
+                    Spacer()
+                    HelpButton(topic: Help.topic(for: selection.pane)).fixedSize()
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
             }
         }
         .onChange(of: selection.pane) { _, pane in SettingsWindow.shared.paneChanged(pane) }
+        .noInitialFocus()
     }
 }
 
@@ -138,18 +138,61 @@ struct ValueSlider: View {
 struct AppearanceSettings: View {
     @State private var prefs = Preferences.shared
 
+    private var preview: HUDModel {
+        HUDModel.settingsPreview(look: prefs.visualization, slots: prefs.visibleSlots,
+                                 pad: prefs.padEnabled ? (prefs.padPosition, Array(prefs.padSlots.prefix(prefs.padCount))) : nil,
+                                 opacity: prefs.opacity, lit: 0)
+    }
+
     var body: some View {
         Form {
-            Section("Visualization") {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 12)], spacing: 12) {
-                    ForEach(Visualization.allCases) { viz in
-                        VisualizationCard(visualization: viz, slots: prefs.visibleSlots, opacity: prefs.opacity,
-                                          selected: prefs.visualization == viz) {
-                            prefs.visualization = viz
-                        }
+            Section {
+                HUDPreview(model: preview)
+                    .padding(12)
+                    .frame(height: 220)
+                    .frame(maxWidth: .infinity)
+                    .scaleEffect(prefs.size.scale / HUDSize.large.scale)
+                    .background(PreviewBackdrop().clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
+                    .overlay(alignment: .bottomLeading) {
+                        Text("\(prefs.visualization.title) · \(prefs.size.title) · \(Int((prefs.opacity * 100).rounded()))%")
+                            .font(.caption).foregroundStyle(.white.opacity(0.75))
+                            .padding(10)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        // Drawn as on a dark surface, which the backdrop always is.
+                        Button("Show HUD") { HUDController.shared.show(atScreenCenter: true) }
+                            .controlSize(.small)
+                            .environment(\.colorScheme, .dark)
+                            .padding(10)
+                    }
+            }
+            Section("Look") {
+                LookGrid(title: "Rings", looks: Visualization.allCases.filter { $0.family == .ring }, prefs: prefs)
+                LookGrid(title: "Panels", looks: Visualization.allCases.filter { $0.family == .hub }, prefs: prefs)
+            }
+            Section {
+                LabeledContent("Number of buttons") {
+                    Stepper(value: $prefs.slotCount, in: DefaultRing.minCount...DefaultRing.maxCount) {
+                        Text("\(prefs.slotCount)").monospacedDigit()
                     }
                 }
-                .padding(.vertical, 4)
+                Picker("Size", selection: $prefs.size) {
+                    ForEach(HUDSize.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                ValueSlider(title: "Opacity", value: $prefs.opacity, range: 0.2...1, step: 0.05,
+                            format: { "\(Int(($0 * 100).rounded()))%" })
+                Picker("Open at", selection: $prefs.anchor) {
+                    ForEach(HUDAnchor.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.radioGroup)
+                .horizontalRadioGroupLayout()
+                Toggle("Play a soft sound when a button runs", isOn: $prefs.playSound)
+                Toggle("Trackpad haptic as you move between buttons", isOn: $prefs.haptics)
+            } header: {
+                Text("Size and behavior")
+            } footer: {
+                Text("Fewer buttons are faster to aim at. Near a screen edge the HUD moves inward to stay on screen.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section {
                 Toggle("Add a button pad", isOn: $prefs.padEnabled)
@@ -157,7 +200,6 @@ struct AppearanceSettings: View {
                     Picker("Position", selection: $prefs.padPosition) {
                         ForEach(PadPosition.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
-                    .pickerStyle(.segmented)
                     LabeledContent("Pad buttons") {
                         Stepper(value: $prefs.padCount, in: DefaultPad.minCount...DefaultPad.maxCount) {
                             Text("\(prefs.padCount)").monospacedDigit()
@@ -167,32 +209,7 @@ struct AppearanceSettings: View {
             } header: {
                 Text("Button pad")
             } footer: {
-                Text("Up to 8 more buttons beside the HUD, drawn to match its look: in a column on the left or right, in a row above or below. Press A, S, D, F and so on to run them, and choose what they do in Buttons.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section {
-                LabeledContent("Number of buttons") {
-                    Stepper(value: $prefs.slotCount, in: DefaultRing.minCount...DefaultRing.maxCount) {
-                        Text("\(prefs.slotCount)").monospacedDigit()
-                    }
-                }
-                ValueSlider(title: "Opacity", value: $prefs.opacity, range: 0.2...1, step: 0.05,
-                            format: { "\(Int(($0 * 100).rounded()))%" })
-                Picker("Size", selection: $prefs.size) {
-                    ForEach(HUDSize.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                Picker("Open at", selection: $prefs.anchor) {
-                    ForEach(HUDAnchor.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                Toggle("Play a soft sound when a button runs", isOn: $prefs.playSound)
-                Toggle("Trackpad haptic as you move between buttons", isOn: $prefs.haptics)
-                LabeledContent("Try it") {
-                    Button("Show HUD") { HUDController.shared.show(atScreenCenter: true) }
-                }
-            } footer: {
-                Text("Fewer buttons are faster to aim at. Near a screen edge the HUD moves inward so every button stays on screen.")
+                Text("Up to 8 more buttons beside the HUD, run with A, S, D, F and so on. Choose what they do in Buttons.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -200,7 +217,30 @@ struct AppearanceSettings: View {
     }
 }
 
-/// One visualization, drawn for real at a quarter of its size.
+/// One family of looks as small cards: the look drawn for real, and its name. The
+/// description shows on hover.
+struct LookGrid: View {
+    let title: String
+    let looks: [Visualization]
+    let prefs: Preferences
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92, maximum: 110), spacing: 10)], alignment: .leading, spacing: 12) {
+                ForEach(looks) { look in
+                    VisualizationCard(visualization: look, slots: prefs.visibleSlots, opacity: prefs.opacity,
+                                      selected: prefs.visualization == look) {
+                        prefs.visualization = look
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// One visualization, drawn for real at a small size.
 struct VisualizationCard: View {
     let visualization: Visualization
     let slots: [Slot]
@@ -210,31 +250,28 @@ struct VisualizationCard: View {
 
     var body: some View {
         Button(action: choose) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 6) {
                 HUDDrawing(model: HUDModel(preview: visualization, slots: slots, opacity: opacity))
-                    .scaleEffect(0.26)
-                    .frame(width: 156, height: 156)
-                    .frame(maxWidth: .infinity)
-                    .background(visualization == .glassPills ? Color(hex: "#E9EBF0") : Color(hex: "#101216"),
-                                in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                HStack(alignment: .firstTextBaseline) {
-                    Text(visualization.title).font(.headline)
-                    Spacer()
-                    Text(visualization.family == .ring ? "Ring" : "Buttons").font(.caption).foregroundStyle(.secondary)
-                }
-                Text(visualization.blurb).font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(3, reservesSpace: true)
+                    .scaleEffect(0.125)
+                    .frame(width: 92, height: 76)
+                    .background(visualization == .glassPills ? AnyShapeStyle(Color(hex: "#E9EBF0"))
+                                : visualization == .liquidGlass ? AnyShapeStyle(LinearGradient(colors: [Color(hex: "#9FB7E8"), Color(hex: "#D8C6EE")],
+                                                                                              startPoint: .topLeading, endPoint: .bottomTrailing))
+                                : AnyShapeStyle(Color(hex: "#15171C")))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: selected ? 2.5 : 1)
+                        .padding(selected ? -3 : 0))
+                Text(visualization.title)
+                    .font(.caption.weight(selected ? .semibold : .regular))
+                    .lineLimit(1).minimumScaleFactor(0.8)
             }
-            .padding(8)
-            .background(selected ? Color.accentColor.opacity(0.14) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.25), lineWidth: selected ? 2 : 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(visualization.blurb)
         .accessibilityLabel(visualization.title)
+        .accessibilityHint(visualization.blurb)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }
@@ -251,11 +288,11 @@ struct FeaturesSettings: View {
             Section {
                 Toggle(isOn: $prefs.searchEnabled) {
                     Text("Type to search")
-                    Text("Press / while the HUD is open and type to find any button, any feature of your apps, any item in the menus gathered in ToolHUD's menu, or any shortcut from the Shortcuts app. Return runs the top match.")
+                    Text("Press / in the HUD to find any button, app feature, gathered menu item or shortcut.")
                 }
                 Toggle(isOn: $prefs.repeatLastEnabled) {
                     Text("Run the last action again")
-                    Text("Click the middle of the HUD, or press Space with no button lit, to run whatever you ran last.")
+                    Text("Click the middle of the HUD, or press Space, to run it.")
                 }
             } header: {
                 Text("In the HUD")
@@ -263,24 +300,24 @@ struct FeaturesSettings: View {
             Section {
                 Toggle(isOn: $prefs.foldersEnabled) {
                     Text("Folder buttons")
-                    Text("A button can open a smaller ring of up to 12 more buttons. Choose Folder under When chosen in Buttons. Esc goes back.")
+                    Text("Adds Folder to When chosen in Buttons: a smaller ring of up to 12 more.")
                 }
                 Toggle(isOn: $prefs.appRingsEnabled) {
                     Text("A different ring for each app")
-                    Text("Give apps such as Safari or Xcode their own buttons. The HUD shows the ring for the app in front, and the usual buttons everywhere else. Add apps at the top of Buttons.")
+                    Text("Adds a Ring for menu at the top of Buttons. The app in front gets its own ring.")
                 }
                 Toggle(isOn: $prefs.appMenuButtonsEnabled) {
                     Text("App menu buttons")
-                    Text("A button can show one of our apps' menus right at the pointer: the same menu as in ToolHUD's menu bar item.")
+                    Text("Adds App menu to When chosen in Buttons: an app's menu at the pointer.")
                 }
                 Toggle(isOn: $prefs.stateLightsEnabled) {
                     Text("Show which features are on")
-                    Text("Buttons for features that switch on and off, such as ClickLens's spotlight, show a green light while they're on. Needs versions of our apps that report it.")
+                    Text("A green light on buttons whose feature is on, like ClickLens's spotlight.")
                 }
             } header: {
                 Text("Buttons")
             } footer: {
-                Text("These are for people who like to customize. Turned off, the HUD works as before, and buttons you've already made are kept.")
+                Text("Turned off, the HUD works as before, and buttons you've already made are kept. State lights need versions of our apps that report it.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -295,19 +332,6 @@ struct GeneralSettings: View {
     @State private var presence = PresenceSettings.shared
     @State private var login = LaunchAtLogin.shared
     @State private var confirmReset = false
-    @State private var sync = SettingsSync.shared
-    @State private var updater = AutoUpdater.shared
-
-    private var updateFooter: String {
-        switch updater.policy {
-        case .automatic:
-            "ToolHUD checks \(updater.interval.phrase). A new version installs itself when the HUD hasn't been used for 30 minutes, no app is presenting or keeping the screen awake, and your Mac hasn't been used for 2 minutes. You'll get a notification when it's done."
-        case .ask:
-            "ToolHUD checks \(updater.interval.phrase) and sends a notification when a new version is out. Nothing installs until you choose to."
-        case .off:
-            "ToolHUD won't look for updates on its own. Use Check Now whenever you like."
-        }
-    }
 
     var body: some View {
         Form {
@@ -341,6 +365,56 @@ struct GeneralSettings: View {
                     .help("Quitting ToolHUD asks first, so a stray ⌘Q doesn't stop the HUD or send your apps' menus back to their own icons.")
             }
             Section {
+                LabeledContent("About") {
+                    HStack {
+                        Button("About ToolHUD") {
+                            NSApp.activate(ignoringOtherApps: true)
+                            NSApp.orderFrontStandardAboutPanel(nil)
+                        }
+                        Button("Our other apps…") {
+                            if let url = URL(string: "https://stevemanke.com/") { NSWorkspace.shared.open(url) }
+                        }
+                    }
+                }
+                LabeledContent("All ToolHUD settings") {
+                    Button("Reset to Defaults…") { confirmReset = true }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { login.refresh() }
+        .confirmationDialog("Reset ToolHUD settings?", isPresented: $confirmReset) {
+            Button("Reset", role: .destructive) {
+                prefs.resetToDefaults()
+                HotKeyCenter.shared.apply()
+                MouseTriggers.shared.apply()
+                ExtraTriggers.shared.apply()
+            }
+        } message: {
+            Text("Your buttons, look, shortcut, triggers and asking before quitting go back to how ToolHUD started. Where it appears, login and sync stay as they are.")
+        }
+    }
+}
+
+/// iCloud sync and updates, apart from General so each pane stays short.
+struct SyncUpdatesSettings: View {
+    @State private var sync = SettingsSync.shared
+    @State private var updater = AutoUpdater.shared
+
+    private var updateFooter: String {
+        switch updater.policy {
+        case .automatic:
+            "ToolHUD checks \(updater.interval.phrase) and installs a new version once your Mac and the HUD have been idle for a while, then sends a notification."
+        case .ask:
+            "ToolHUD checks \(updater.interval.phrase) and sends a notification when a new version is out. Nothing installs until you choose to."
+        case .off:
+            "ToolHUD won't look for updates on its own. Use Check Now whenever you like."
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section {
                 Toggle("Sync settings with your other Macs", isOn: $sync.isEnabled)
                 if sync.isEnabled {
                     switch sync.keyState {
@@ -367,7 +441,7 @@ struct GeneralSettings: View {
             } header: {
                 Text("iCloud")
             } footer: {
-                Text("Your buttons, look, shortcut, triggers and asking before quitting follow you to every Mac signed in to the same iCloud account with sync turned on. They're encrypted on this Mac with your sync passphrase before they reach iCloud Drive, so neither Apple nor the developer can read them. Open at login stays on each Mac.")
+                Text("Your buttons, look, shortcut, triggers and asking before quitting follow you to your other Macs. They're encrypted with your sync passphrase before they reach iCloud Drive, so neither Apple nor the developer can read them. Open at login stays on each Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
@@ -404,37 +478,11 @@ struct GeneralSettings: View {
             } footer: {
                 Text(updateFooter).font(.caption).foregroundStyle(.secondary)
             }
-            Section {
-                LabeledContent("About") {
-                    HStack {
-                        Button("About ToolHUD") {
-                            NSApp.activate(ignoringOtherApps: true)
-                            NSApp.orderFrontStandardAboutPanel(nil)
-                        }
-                        Button("Our other apps…") {
-                            if let url = URL(string: "https://stevemanke.com/") { NSWorkspace.shared.open(url) }
-                        }
-                    }
-                }
-                LabeledContent("All ToolHUD settings") {
-                    Button("Reset to Defaults…") { confirmReset = true }
-                }
-            }
         }
         .formStyle(.grouped)
-        .onAppear { login.refresh(); updater.refreshNotificationStatus() }
+        .onAppear { updater.refreshNotificationStatus() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             updater.refreshNotificationStatus()
-        }
-        .confirmationDialog("Reset ToolHUD settings?", isPresented: $confirmReset) {
-            Button("Reset", role: .destructive) {
-                prefs.resetToDefaults()
-                HotKeyCenter.shared.apply()
-                MouseTriggers.shared.apply()
-                ExtraTriggers.shared.apply()
-            }
-        } message: {
-            Text("Your buttons, look, shortcut, triggers and asking before quitting go back to how ToolHUD started. Where it appears, login and sync stay as they are.")
         }
     }
 }

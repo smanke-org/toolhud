@@ -211,8 +211,8 @@ enum DebugHooks {
                         for sub in view.subviews { if let hit = helpButton(sub) { return hit } }
                         return nil
                     }
-                    // General hangs SwiftUI layout in a staging run (sync never started), so skip it.
-                    for pane in SettingsPane.allCases where pane != .general {
+                    // General and Sync hang SwiftUI layout in a staging run (sync never started), so skip them.
+                    for pane in SettingsPane.allCases where pane != .general && pane != .sync {
                         SettingsWindow.shared.show(pane)
                         RunLoop.main.run(until: Date().addingTimeInterval(0.6))
                         let button = SettingsWindow.shared.debugWindow?.contentView.flatMap(helpButton)

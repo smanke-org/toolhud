@@ -27,7 +27,7 @@ Requires macOS 26 or later.
 - **More kinds of buttons**: run a shortcut from the Shortcuts app, open a web page, file, folder or app, type or paste a piece of text, choose a menu item in any app, or run an AppleScript or shell command. A Steps button runs several of these in turn, with a wait after each.
 - **Type to search**: press / in the HUD and type to find any button, any feature of your apps, any item in your apps' menus, or any shortcut.
 - **Extras for power users** (Settings › Features, off until you want them): folder buttons that open a smaller ring, a different ring for each app, running the last action again from the HUD's center, app menu buttons, and green lights on buttons whose feature is on.
-- **Ten looks**: Halo, Orbit, Dial, Stargate, Red Alert, Constellation, Glass Pills and Planetary rings, or the Command Deck and Hive button hubs. Opacity, size, where it opens, a sound and a trackpad haptic are adjustable.
+- **Eleven looks**: Halo, Orbit, Dial, Stargate, Red Alert, Constellation, Glass Pills, Planetary and Liquid Glass rings, or the Command Deck and Hive button hubs. Opacity, size, where it opens, a sound and a trackpad haptic are adjustable.
 - **Button pad**: up to 8 more buttons beside the HUD, drawn to match its look, that run on A, S, D, F, G, H, J and K.
 - **Mouse triggers**: open the HUD with ⌥ + right-click, by holding the right button, with the middle button, or with either side button.
 - **More ways to open it**: double-tap ⌘, ⌥, ⌃ or ⇧, rest the pointer in a screen corner, or use the Show ToolHUD action in the Shortcuts app.
@@ -41,7 +41,7 @@ Requires macOS 26 or later.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/toolhud-command-deck.jpg" alt="The Command Deck look, a panel of eight numbered keycaps such as Capture text, Spotlight and Quick Paste, each labeled with its app"><br><sub><b>Command Deck.</b> One of ten looks: a panel of keycaps.</sub></td>
+<td width="50%"><img src="docs/images/toolhud-command-deck.jpg" alt="The Command Deck look, a panel of eight numbered keycaps such as Capture text, Spotlight and Quick Paste, each labeled with its app"><br><sub><b>Command Deck.</b> One of eleven looks: a panel of keycaps.</sub></td>
 <td width="50%"><img src="docs/images/toolhud-stargate.jpg" alt="The Stargate look, a ring of chevrons with Draw arrow locked and named in the center"><br><sub><b>Stargate.</b> The chevrons are the buttons; the gate opens when one locks.</sub></td>
 </tr>
 <tr>
@@ -150,13 +150,14 @@ ToolHUD adds `?source=toolhud` to every URL it opens.
 
 ## Looks
 
-Settings › Appearance offers ten visualizations, each drawn live in Settings:
+Settings › Appearance offers eleven looks, each drawn live in Settings, with a large preview of the one you choose:
 
 - **Rings**: Halo (translucent slices), Orbit (round buttons that spring out), Dial (a rotary
   bezel), Stargate (the chevrons are the buttons, and the gate opens when one locks), Red Alert
   (crimson blades with hazard stripes), Constellation (stars joined by lines), Glass Pills
-  (labeled pills) and Planetary (planets that stop drifting when you aim).
-- **Button hubs**: Command Deck (a panel of keycaps) and Hive (honeycomb cells).
+  (labeled pills), Planetary (planets that stop drifting when you aim) and Liquid Glass (clear
+  glass buttons that pick up your wallpaper and follow Light and Dark).
+- **Panels**: Command Deck (a panel of keycaps) and Hive (honeycomb cells).
 
 **Button pad:** for more buttons than the ring holds, add up to 8 buttons beside the HUD,
 drawn to match its look (coins for the Halo, keycaps for the Command Deck, comb cells for the
@@ -178,7 +179,7 @@ quits, the icons come back right away.
 
 ## Sync
 
-With "Sync settings with your other Macs" on (Settings › General), your buttons, look,
+With "Sync settings with your other Macs" on (Settings › Sync & Updates), your buttons, look,
 shortcut and triggers follow you to every Mac signed in to the same iCloud account. They go
 through iCloud Drive, end-to-end encrypted: everything is sealed with AES-256-GCM on your Mac
 under a random key, and that key is stored in iCloud only wrapped by your sync passphrase
@@ -194,7 +195,7 @@ and choose the menu items your buttons send.
 
 ## Updates
 
-ToolHUD checks for new versions once a day, or as often as you choose in Settings (a number of hours, days, weeks or months). In Settings › General you choose whether it
+ToolHUD checks for new versions once a day, or as often as you choose in Settings (a number of hours, days, weeks or months). In Settings › Sync & Updates you choose whether it
 installs them automatically when you're not using it, asks first, or doesn't check.
 
 ## Automation

@@ -56,6 +56,9 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     /// The Mac's own look, whatever the app's choice.
     static var systemAppearance: NSAppearance? {
+        #if DEBUG
+        if let forced = debugForced { return forced }
+        #endif
         CFPreferencesAppSynchronize(kCFPreferencesAnyApplication)
         let style = CFPreferencesCopyAppValue("AppleInterfaceStyle" as CFString, kCFPreferencesAnyApplication) as? String
         return NSAppearance(named: style == "Dark" ? .darkAqua : .aqua)
@@ -67,8 +70,19 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         window.appearance = systemAppearance
     }
 
+    #if DEBUG
+    /// TOOLHUD_DEBUG_APPEARANCE=light|dark shows everything, overlays too, in that look,
+    /// for snapshots in both without touching the saved choice.
+    static var debugForced: NSAppearance? {
+        ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_APPEARANCE"].flatMap(AppAppearance.init)?.nsAppearance
+    }
+    #endif
+
     @MainActor static func apply() {
-        let wanted = current.nsAppearance
+        var wanted = current.nsAppearance
+        #if DEBUG
+        if let forced = debugForced { wanted = forced }
+        #endif
         if NSApp.appearance?.name != wanted?.name { NSApp.appearance = wanted }
     }
 }

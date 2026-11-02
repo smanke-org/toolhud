@@ -69,8 +69,30 @@ struct ButtonsSettings: View {
         if editingPad { ringPadCount = value } else { ringSlotCount = value }
     }
 
+    /// The lit button in the preview: a ring index, or the pad's after the ring's.
+    private var previewLit: Int { editingPad ? ringSlotCount + index : index }
+
+    private var preview: HUDModel {
+        HUDModel.settingsPreview(look: prefs.visualization, slots: Array(ringSlots.prefix(ringSlotCount)),
+                                 pad: prefs.padEnabled ? (prefs.padPosition, Array(ringPadSlots.prefix(ringPadCount))) : nil,
+                                 opacity: prefs.opacity, lit: previewLit)
+    }
+
+    private var editorTitle: String {
+        editingPad ? "Pad button \(DefaultPad.keyLetters[index])" : "Button \(index + 1)"
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
+            listColumn
+            Divider()
+            editorColumn
+        }
+        .modifier(paneChanges)
+    }
+
+    /// The buttons, with adding, removing and the ring file menu.
+    private var listColumn: some View {
             VStack(spacing: 0) {
                 if prefs.appRingsEnabled {
                     appRingBar
@@ -78,7 +100,8 @@ struct ButtonsSettings: View {
                 }
                 if prefs.padEnabled {
                     Picker("", selection: $list) {
-                        ForEach(ButtonList.allCases, id: \.self) { Text($0.title).tag($0) }
+                        Text("Ring · \(ringSlotCount)").tag(ButtonList.ring)
+                        Text("Pad · \(ringPadCount)").tag(ButtonList.pad)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -94,7 +117,7 @@ struct ButtonsSettings: View {
                         .onMove { from, to in ringPadSlots.move(fromOffsets: from, toOffset: to) }
                     } else {
                         ForEach(Array(ringSlots.prefix(ringSlotCount).enumerated()), id: \.element.id) { i, item in
-                            SlotRow(key: "\(i + 1)", slot: item).tag(i)
+                            SlotRow(key: SlotKeyCap.key(for: i) ?? "\(i + 1)", slot: item).tag(i)
                                 .contextMenu { rowMenu(i) }
                         }
                         .onMove { from, to in ringSlots.move(fromOffsets: from, toOffset: to) }
@@ -111,31 +134,89 @@ struct ButtonsSettings: View {
                 } message: {
                     Text("Its action, symbol and color are removed, and the buttons after it move up.")
                 }
+                if let importError {
+                    Text(importError)
+                        .font(.caption).foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10).padding(.bottom, 6)
+                }
                 Divider()
-                HStack {
-                    Button { setCount(max(limits.lowerBound, count - 1)) } label: { Image(systemName: "minus") }
-                        .disabled(count <= limits.lowerBound)
-                        .help("Remove the last button")
+                HStack(spacing: 2) {
                     Button { setCount(min(limits.upperBound, count + 1)); selection = count - 1 } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus").frame(width: 20, height: 18)
                     }
                     .disabled(count >= limits.upperBound)
                     .help("Add a button")
+                    Button { setCount(max(limits.lowerBound, count - 1)) } label: {
+                        Image(systemName: "minus").frame(width: 20, height: 18)
+                    }
+                    .disabled(count <= limits.lowerBound)
+                    .help("Remove the last button")
+                    // Whole-ring actions, apart from the one button's.
+                    Menu {
+                        Button("Import Ring…") { importRing() }
+                        Button("Export Ring…") { exportRing() }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("Import or export a ring file: your buttons, the button pad and the HUD's look, to keep or to share")
                     Spacer()
                     Text("\(count) of \(limits.upperBound)").font(.caption).foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
                 .padding(8)
             }
-            .frame(width: 240)
-            Divider()
-            SlotEditor(slot: slot,
-                       title: editingPad ? "Pad button \(DefaultPad.keyLetters[index])" : "Button \(index + 1)",
-                       reset: {
-                           if editingPad { ringPadSlots[index] = DefaultPad.slots[index] } else { ringSlots[index] = DefaultRing.slots[index] }
-                       },
-                       importRing: importRing, exportRing: exportRing, importError: importError)
-        }
+            .frame(width: 260)
+    }
+
+    /// The preview, then everything about the chosen button.
+    private var editorColumn: some View {
+            VStack(spacing: 0) {
+                HUDPreview(model: preview) { picked in
+                    if picked < ringSlotCount {
+                        list = .ring
+                        DispatchQueue.main.async { selection = picked }
+                    } else if prefs.padEnabled {
+                        list = .pad
+                        DispatchQueue.main.async { selection = picked - ringSlotCount }
+                    }
+                }
+                .padding(10)
+                .frame(height: 240)
+                .frame(maxWidth: .infinity)
+                .background(PreviewBackdrop().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+                .overlay(alignment: .bottomLeading) {
+                    Text("Click a button to edit it")
+                        .font(.caption).foregroundStyle(.white.opacity(0.7))
+                        .padding(10)
+                }
+                .padding(.horizontal, 20).padding(.top, 14)
+                editorHeader
+                    .padding(.horizontal, 20).padding(.top, 14)
+                SlotEditor(slot: slot, title: nil)
+            }
+    }
+
+    private var paneChanges: PaneChanges { PaneChanges(pane: self) }
+}
+
+/// What the Buttons pane does when its lists change, kept apart from its layout so the
+/// compiler can check each in reasonable time.
+private struct PaneChanges: ViewModifier {
+    let pane: ButtonsSettings
+
+    func body(content: Content) -> some View {
+        pane.applyChanges(to: content)
+    }
+}
+
+extension ButtonsSettings {
+    @ViewBuilder
+    fileprivate func applyChanges(to content: some View) -> some View {
+        content
         .onChange(of: list) { _, _ in selection = 0 }
         .onChange(of: ringFor) { _, _ in selection = 0 }
         .onChange(of: prefs.appRingsEnabled) { _, on in if !on { ringFor = "" } }
@@ -159,12 +240,11 @@ struct ButtonsSettings: View {
     /// Which ring the list shows, with adding and removing apps.
     private var appRingBar: some View {
         HStack(spacing: 6) {
-            Picker("", selection: $ringFor) {
+            Picker("Ring for", selection: $ringFor) {
                 Text("All apps").tag("")
                 if !prefs.appRings.isEmpty { Divider() }
                 ForEach(prefs.appRings) { ring in Text(ring.name).tag(ring.bundleID) }
             }
-            .labelsHidden()
             Button { addAppRing() } label: { Image(systemName: "plus") }
                 .help("Add a ring for an app")
             Button { confirmRemoveRing = true } label: { Image(systemName: "minus") }
@@ -193,16 +273,45 @@ struct ButtonsSettings: View {
         ringFor = id
     }
 
+    /// The button's name in the pane, with Test and the other one-button actions beside it.
+    private var editorHeader: some View {
+        HStack(spacing: 8) {
+            Text(editorTitle).font(.headline)
+            Spacer()
+            Button { test(index) } label: { Label("Test", systemImage: "play.fill") }
+                .disabled(slot.wrappedValue.mode == .folder)
+                .help("Test This Button: runs it now, as clicking it in the HUD would")
+            Menu {
+                Button("Duplicate Button") { duplicate(index) }
+                    .disabled(count >= limits.upperBound)
+                Button("Reset Button") {
+                    if editingPad { ringPadSlots[index] = DefaultPad.slots[index] } else { ringSlots[index] = DefaultRing.slots[index] }
+                }
+                Divider()
+                Button("Delete Button…", role: .destructive) { pendingDelete = index }
+                    .disabled(count <= limits.lowerBound)
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Duplicate, reset or delete this button")
+        }
+        .controlSize(.regular)
+    }
+
+    private func test(_ i: Int) {
+        let toRun = editingPad ? ringPadSlots[i] : ringSlots[i]
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            MainActor.assumeIsolated { ActionRunner.run(toRun) }
+        }
+    }
+
     // MARK: Right-click menu
 
     @ViewBuilder
     private func rowMenu(_ i: Int) -> some View {
-        Button("Test This Button") {
-            let toRun = editingPad ? ringPadSlots[i] : ringSlots[i]
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                MainActor.assumeIsolated { ActionRunner.run(toRun) }
-            }
-        }
+        Button("Test This Button") { test(i) }
         Button("Duplicate Button") { duplicate(i) }
             .disabled(count >= limits.upperBound)
         Divider()
@@ -317,12 +426,9 @@ enum EditorContext {
 /// Everything about one button.
 struct SlotEditor: View {
     @Binding var slot: Slot
-    let title: String
+    /// The section's heading; nil where the pane already names the button.
+    let title: String?
     var context: EditorContext = .ring
-    var reset: (() -> Void)? = nil
-    var importRing: (() -> Void)? = nil
-    var exportRing: (() -> Void)? = nil
-    var importError: String? = nil
 
     @State private var directory = LensDirectory.shared
     @State private var prefs = Preferences.shared
@@ -347,15 +453,15 @@ struct SlotEditor: View {
 
     var body: some View {
         Form {
-            Section(title) {
+            Section {
                 TextField("Name", text: $slot.name)
                 LabeledContent("Symbol") {
-                    HStack {
+                    HStack(spacing: 10) {
                         SlotGlyph(symbol: slot.symbol, size: 16, color: slot.tint.color)
                             .frame(width: 30, height: 30)
                             .background(slot.tint.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        TextField("", text: $slot.symbol, prompt: Text("SF Symbol name"))
-                            .labelsHidden().frame(maxWidth: 190)
+                            .help(slot.symbol)
+                            .accessibilityLabel("Symbol \(slot.symbol)")
                         Button("Choose…") { choosingSymbol = true }
                             .popover(isPresented: $choosingSymbol, arrowEdge: .bottom) {
                                 SymbolPicker(symbol: $slot.symbol, color: slot.tint.color) { choosingSymbol = false }
@@ -365,24 +471,36 @@ struct SlotEditor: View {
                 if context != .step {
                     LabeledContent("Color") {
                         HStack(spacing: 8) {
-                            Button("App color") { slot.color = nil }
-                                .buttonStyle(.bordered).controlSize(.small)
-                                .disabled(slot.color == nil)
+                            // Auto: the lens app's own color, which follows the app.
+                            Button { slot.color = nil } label: {
+                                Circle().fill(slot.appTint.color).frame(width: 20, height: 20)
+                                    .overlay(Text("A").font(.system(size: 10, weight: .bold)).foregroundStyle(.white))
+                                    .overlay(Circle().strokeBorder(Color.primary.opacity(slot.color == nil ? 0.9 : 0), lineWidth: 2).padding(-3))
+                            }
+                            .buttonStyle(.plain)
+                            .help("Auto: the app's own color")
+                            .accessibilityLabel("Auto color")
+                            .accessibilityAddTraits(slot.color == nil ? [.isSelected] : [])
                             ForEach(SlotColor.swatches, id: \.name) { swatch in
                                 Button { slot.color = swatch.color } label: {
                                     Circle().fill(swatch.color.color).frame(width: 20, height: 20)
-                                        .overlay(Circle().strokeBorder(Color.primary.opacity(slot.color == swatch.color ? 0.9 : 0), lineWidth: 2))
+                                        .overlay(Circle().strokeBorder(Color.primary.opacity(slot.color == swatch.color ? 0.9 : 0), lineWidth: 2).padding(-3))
                                 }
                                 .buttonStyle(.plain)
+                                .help(swatch.name)
                                 .accessibilityLabel(swatch.name)
+                                .accessibilityAddTraits(slot.color == swatch.color ? [.isSelected] : [])
                             }
                             ColorPicker("", selection: Binding(get: { slot.tint.color },
                                                                set: { slot.color = SlotColor(NSColor($0)) }),
                                         supportsOpacity: false)
                                 .labelsHidden()
+                                .help("Any other color")
                         }
                     }
                 }
+            } header: {
+                if let title { Text(title) }
             }
 
             Section {
@@ -404,34 +522,9 @@ struct SlotEditor: View {
                 case .appMenu: appMenuFields
                 }
             } footer: {
-                Text(footer).font(.caption).foregroundStyle(.secondary)
+                if let footer { Text(footer).font(.caption).foregroundStyle(.secondary) }
             }
 
-            if context == .ring || reset != nil {
-                Section {
-                    HStack {
-                        Button("Test This Button") {
-                            let toRun = slot
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                MainActor.assumeIsolated { ActionRunner.run(toRun) }
-                            }
-                        }
-                        .disabled(slot.mode == .folder)
-                        if let reset { Button("Reset Button") { reset() } }
-                        Spacer()
-                        if let importRing { Button("Import Ring…") { importRing() } }
-                        if let exportRing { Button("Export Ring…") { exportRing() } }
-                    }
-                    if let importError {
-                        Text(importError).font(.callout).foregroundStyle(.red)
-                    }
-                } footer: {
-                    if importRing != nil {
-                        Text("A ring file holds your buttons, the button pad and the HUD's look, to keep or to share with someone else.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
         }
         .formStyle(.grouped)
         .sheet(isPresented: $editingFolder) {
@@ -446,9 +539,10 @@ struct SlotEditor: View {
         }
     }
 
-    private var footer: String {
+    /// What the kind does. A lens action's status line above already says it.
+    private var footer: String? {
         switch slot.mode {
-        case .lens: "A lens action asks the app to run the feature directly, so it keeps working if you change the app's shortcuts."
+        case .lens: nil
         case .keystroke: "A keystroke presses keys for you, as if you'd typed them. The HUD never takes focus, so they go to the app that was in front when it opened."
         case .shortcut: "Runs a shortcut from the Shortcuts app, in the background, as the Shortcuts menu does."
         case .open: "Opens a web page in your browser, or a file, folder or app as double-clicking it would."
@@ -942,6 +1036,7 @@ struct FolderEditor: View {
             .padding(12)
         }
         .frame(width: 820, height: 600)
+        .noInitialFocus()
     }
 
     private func delete(_ i: Int) {
@@ -971,6 +1066,7 @@ struct StepEditor: View {
             .padding(12)
         }
         .frame(width: 640, height: 600)
+        .noInitialFocus()
     }
 }
 
@@ -1174,77 +1270,88 @@ struct TriggersSettings: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("Show HUD") {
+                LabeledContent("Keyboard shortcut") {
                     ShortcutRecorder(shortcut: $prefs.hotKey)
                 }
                 if let warning = ShortcutConflicts.warning(for: prefs.hotKey) {
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout).foregroundStyle(.orange)
                 }
-                Text("Press the shortcut to open the HUD, then click a button. Press it again, or Esc, to close the HUD.")
-                    .font(.callout).foregroundStyle(.secondary)
-            } header: {
-                Text("Keyboard")
-            } footer: {
-                Text("In the HUD, the number keys run buttons 1 to 9 and 0 runs button 10. The button pad runs on A, S, D, F, G, H, J and K. The arrow keys and Tab move between buttons, Return runs the lit one, and Esc closes the HUD. With them on in Features, / searches and Space with no button lit runs the last action again.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section {
-                Picker("Open with", selection: $prefs.mouseTrigger) {
-                    ForEach(MouseTrigger.allCases, id: \.self) { trigger in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(trigger.title)
-                            Text(trigger.detail).font(.caption).foregroundStyle(.secondary)
-                        }
-                        .tag(trigger)
-                    }
+                Picker(selection: $prefs.mouseTrigger) {
+                    ForEach(MouseTrigger.allCases, id: \.self) { Text($0.title).tag($0) }
+                } label: {
+                    Text("Mouse")
+                    Text(prefs.mouseTrigger.detail)
                 }
-                .pickerStyle(.radioGroup)
                 if prefs.mouseTrigger == .holdRight {
                     ValueSlider(title: "Hold for", value: $prefs.holdDelay, range: 0.15...0.8, step: 0.05,
                                 format: { "\(Int(($0 * 1000).rounded())) ms" })
                 }
-            } header: {
-                Text("Mouse")
-            } footer: {
-                Text("Works in every app. The HUD opens around the pointer and stays open when you let go; click a button to run it.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section {
-                Picker("Double-tap", selection: $prefs.doubleTapKey) {
+                Picker(selection: $prefs.doubleTapKey) {
                     ForEach(DoubleTapKey.allCases, id: \.self) { Text($0.title).tag($0) }
+                } label: {
+                    Text("Double-tap a key")
+                    if prefs.doubleTapKey != .off {
+                        Text("Press it twice quickly on its own. Holding it for a shortcut never counts.")
+                    }
                 }
-                Picker("Screen corner", selection: $prefs.hotCorner) {
+                Picker(selection: $prefs.hotCorner) {
                     ForEach(HotCorner.allCases, id: \.self) { Text($0.title).tag($0) }
+                } label: {
+                    Text("Screen corner")
+                    if prefs.hotCorner != .off {
+                        Text("Push the pointer into the corner and rest there. A macOS Hot Corner there happens too.")
+                    }
                 }
                 if prefs.hotCorner != .off {
                     ValueSlider(title: "Rest for", value: $prefs.cornerDelay, range: 0...1.5, step: 0.05,
                                 format: { "\(Int(($0 * 1000).rounded())) ms" })
                 }
+                DisclosureGroup("Links for Shortcuts and scripts") {
+                    Text("Open toolhud://show for the HUD, toolhud://show?ring=Safari for an app's ring or a folder, by name, and toolhud://repeat to run the last action again.")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } header: {
-                Text("More ways to open the HUD")
+                Text("Open the HUD")
             } footer: {
-                Text("Double-tap: press the key twice quickly on its own; holding it for a shortcut never counts. Screen corner: push the pointer into the corner and rest there. If macOS uses that corner for a Hot Corner too, both happen. Shortcuts and scripts can open toolhud://show, toolhud://show?ring=Safari (an app's ring or a folder, by name) and toolhud://repeat.")
+                Text("The HUD opens around the pointer, in every app, and stays open until you click a button. The shortcut again, or Esc, closes it.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section {
-                if access.isTrusted {
-                    Label("ToolHUD has Accessibility access.", systemImage: "checkmark.circle")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Label("Mouse triggers, double-tap, keystrokes, typed text and menu items need Accessibility access. Lens actions and the keyboard shortcut work without it.",
-                          systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Button("Open Privacy Settings") {
-                        access.request()
-                        access.openSettings()
+            Section("Keys in the HUD") {
+                KeyLegendRow(keys: ["1", "…", "9", "0"], action: "Run buttons 1 to 10")
+                KeyLegendRow(keys: ["A", "S", "D", "F", "…", "K"], action: "Run the button pad",
+                             note: prefs.padEnabled ? nil : "Pad off")
+                KeyLegendRow(keys: ["←", "→", "Tab"], action: "Move between buttons")
+                KeyLegendRow(keys: ["Return"], action: "Run the lit button")
+                KeyLegendRow(keys: ["/"], action: "Search buttons, features and menus",
+                             note: prefs.searchEnabled ? nil : "Off in Features")
+                KeyLegendRow(keys: ["Space"], action: "Run the last action again",
+                             note: prefs.repeatLastEnabled ? nil : "Off in Features")
+                KeyLegendRow(keys: ["Esc"], action: "Close the HUD, or leave a folder")
+            }
+
+            Section("Permission") {
+                LabeledContent {
+                    HStack(spacing: 12) {
+                        if access.isTrusted {
+                            Label("Allowed", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        } else {
+                            Label("Not allowed", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        Button("Open Privacy Settings") {
+                            if !access.isTrusted { access.request() }
+                            access.openSettings()
+                        }
                     }
+                } label: {
+                    Text("Accessibility")
+                    Text("For mouse triggers, double-tap, keystrokes, typed text and menu items. Lens actions and the keyboard shortcut work without it.")
                 }
-            } header: {
-                Text("Permission")
             }
         }
         .formStyle(.grouped)
@@ -1252,5 +1359,40 @@ struct TriggersSettings: View {
         .onChange(of: prefs.hotKey) { _, _ in HotKeyCenter.shared.apply() }
         .onChange(of: prefs.doubleTapKey) { _, _ in ExtraTriggers.shared.apply() }
         .onChange(of: prefs.hotCorner) { _, _ in ExtraTriggers.shared.apply() }
+    }
+}
+
+/// One line of the key table: the keys as keycaps, then what they do.
+struct KeyLegendRow: View {
+    let keys: [String]
+    let action: String
+    /// Why the keys don't work right now, if they don't.
+    var note: String? = nil
+
+    var body: some View {
+        HStack(spacing: 4) {
+            HStack(spacing: 4) {
+                ForEach(Array(keys.enumerated()), id: \.offset) { _, key in
+                    if key == "…" {
+                        Text(key).foregroundStyle(.tertiary)
+                    } else {
+                        Text(key)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 5)
+                            .frame(minWidth: 20, minHeight: 20)
+                            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(.background))
+                            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Color.primary.opacity(0.18)))
+                    }
+                }
+            }
+            .frame(width: 150, alignment: .leading)
+            Text(action)
+                .foregroundStyle(note == nil ? .primary : .secondary)
+            Spacer()
+            if let note {
+                Text(note).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }

@@ -80,7 +80,7 @@ extension HUDLayout {
         switch look {
         case .halo:
             PadStyle(columnItem: (176, 40), rowItem: (72, 79), columnGap: 8, rowGap: 8, padding: (12, 10))
-        case .orbit:
+        case .orbit, .liquidGlass:
             PadStyle(columnItem: (180, 40), rowItem: (76, 77), columnGap: 10, rowGap: 14, padding: (4, 4), tether: false)
         case .dial:
             PadStyle(columnItem: (196, 38), rowItem: (76, 90), columnGap: 8, rowGap: 8, padding: (12, 14))
@@ -115,6 +115,10 @@ extension HUDLayout {
             // Names and keycaps hang under each button.
             let r = orbitRadius(count)
             return Bounds(minX: -r - 50, minY: -r - 50, maxX: r + 50, maxY: r + 70)
+        case .liquidGlass:
+            // The name capsules hang a little lower and reach a little wider.
+            let r = orbitRadius(count)
+            return Bounds(minX: -r - 56, minY: -r - 44, maxX: r + 56, maxY: r + glassLabelDrop + 24)
         case .dial: return Bounds(minX: -215, minY: -234, maxX: 215, maxY: 215)
         // The names beside the side chevrons reach past the canvas.
         case .stargate: return Bounds(minX: -340, minY: -273, maxX: 340, maxY: 274)

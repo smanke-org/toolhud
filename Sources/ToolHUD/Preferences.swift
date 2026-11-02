@@ -238,8 +238,11 @@ extension SlotColor {
 
 extension Slot {
     /// Its own color, else its lens app's.
-    @MainActor var tint: SlotColor {
-        color ?? lensApp.flatMap { LensDirectory.shared.app($0)?.color } ?? .neutral
+    @MainActor var tint: SlotColor { color ?? appTint }
+
+    /// The color it has with no color of its own: its lens app's.
+    @MainActor var appTint: SlotColor {
+        lensApp.flatMap { LensDirectory.shared.app($0)?.color } ?? .neutral
     }
 
     @MainActor var appName: String? {
@@ -278,6 +281,15 @@ extension Slot {
         case .appMenu:
             return "\(menuAppName ?? "An app")’s menu"
         }
+    }
+
+    /// The readout's third line. A lens button's app is already on the line above, so it
+    /// shows the feature only when the button was renamed; empty, the readout shows the key.
+    @MainActor var readoutDetail: String {
+        guard mode == .lens else { return summary }
+        let feature = lensApp.flatMap { LensDirectory.shared.app($0) }?.feature(lensFeature ?? "")?.title
+        guard let feature, feature.compare(name, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else { return "" }
+        return feature
     }
 
     /// What the readout and the Settings list show under a button's name: its app, or the

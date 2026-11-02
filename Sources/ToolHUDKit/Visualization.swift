@@ -2,7 +2,7 @@ import Foundation
 
 /// The looks the HUD can take.
 public enum Visualization: String, Codable, CaseIterable, Sendable, Identifiable {
-    case halo, orbit, dial, stargate, commandDeck, hive, redAlert, constellation, glassPills, planetary
+    case halo, orbit, dial, stargate, commandDeck, hive, redAlert, constellation, glassPills, planetary, liquidGlass
 
     public var id: String { rawValue }
 
@@ -20,6 +20,7 @@ public enum Visualization: String, Codable, CaseIterable, Sendable, Identifiable
         case .constellation: "Constellation"
         case .glassPills: "Glass Pills"
         case .planetary: "Planetary"
+        case .liquidGlass: "Liquid Glass"
         }
     }
 
@@ -42,6 +43,7 @@ public enum Visualization: String, Codable, CaseIterable, Sendable, Identifiable
         case .constellation: "Star buttons joined by lines that draw themselves in."
         case .glassPills: "Labeled pills, the easiest to read at a glance."
         case .planetary: "Planets drift around a sun and hold still when you reach for one."
+        case .liquidGlass: "Clear glass buttons that pick up your wallpaper and follow Light and Dark."
         }
     }
 

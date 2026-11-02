@@ -50,6 +50,7 @@ enum Help {
         case .buttons: "buttons"
         case .features: "features"
         case .triggers: "opening"
+        case .sync: "sync"
         case .activity: "activity"
         }
     }
@@ -66,7 +67,7 @@ enum Help {
             .text("Change both in Settings › Triggers. The HUD stays open until you click a button, press Esc, or press the shortcut again."),
             .heading("Allow Accessibility"),
             .text("Mouse triggers and keystroke buttons need Accessibility permission (macOS 27 calls it Device Control). App features and the keyboard shortcut work without it. If the menu bar menu shows \"Allow Mouse Triggers and Keystrokes…\", choose it."),
-            .tip("Settings › Appearance › Try it › Show HUD opens the HUD in the middle of the screen, to see a new look or button."),
+            .tip("Settings › Appearance shows a live preview of the HUD, and its Show HUD button opens the real one in the middle of the screen."),
         ]),
 
         HelpTopic(id: "using", title: "Using the HUD", symbol: "circle.circle", blocks: [
@@ -111,7 +112,7 @@ enum Help {
             .heading("Keystroke buttons"),
             .text("Turn on ⌘ ⌥ ⌃ ⇧ with the toggles, then type the keys: K means the K key. Type several keys to press them one after another. Special Keys adds keys you can't type, such as arrows, Return or [F5]. \"Send to\" picks the app that receives them."),
             .heading("Looks and sharing"),
-            .text("Each button has an SF Symbol icon (Choose… to browse) and a color; App color uses the app's own. Test This Button runs it without opening the HUD. Export Ring… saves your buttons, button pad and look to a ring file to keep or share; Import Ring… loads one."),
+            .text("The preview at the top shows the HUD with the button you're editing lit; click a button in it to edit that one. Each button has an SF Symbol icon (Choose… to browse, or type any symbol name there) and a color; Auto, the first color, uses the app's own. Test (▶) runs it without opening the HUD, and the … menu beside it duplicates, resets or deletes it. The … menu under the list exports your buttons, button pad and look to a ring file to keep or share, or imports one."),
             .heading("The button pad"),
             .text("With the button pad on, a Ring / Pad switch sits above the list. Pad holds the pad's own buttons, from 1 to 8, which run on A, S, D, F, G, H, J and K."),
         ]),
@@ -171,7 +172,7 @@ enum Help {
         ]),
 
         HelpTopic(id: "looks", title: "Looks", symbol: "paintpalette", blocks: [
-            .text("Settings › Appearance offers ten looks: Halo, Orbit, Dial, Stargate, Command Deck, Hive, Red Alert, Constellation, Glass Pills and Planetary. They all work the same way; only the drawing changes."),
+            .text("Settings › Appearance offers eleven looks: the rings Halo, Orbit, Dial, Stargate, Red Alert, Constellation, Glass Pills, Planetary and Liquid Glass, and the panels Command Deck and Hive. They all work the same way; only the drawing changes. Hold the pointer over a look for a short description."),
             .keys([
                 ("Opacity", "How see-through the HUD is"),
                 ("Size", "Small, medium or large"),
@@ -182,6 +183,7 @@ enum Help {
             .text("For more buttons than the ring holds, turn on \"Add a button pad\" in Settings › Appearance. It adds up to 8 buttons beside the HUD, drawn to match the look: coins for the Halo, keycaps for the Command Deck, comb cells for the Hive, moons for Planetary, and so on. Put it in a column on the left or right, or in a row above or below. Its buttons run on A, S, D, F, G, H, J and K, and you choose what they do under Pad in Settings › Buttons."),
             .tip("The Dial look turns its bezel instead of lighting buttons: scroll or use the arrow keys to turn it."),
             .tip("Near a screen edge, the HUD moves inward so every button stays on screen."),
+            .tip("Liquid Glass picks up your wallpaper and follows Light and Dark. With Reduce Transparency on in System Settings › Accessibility › Display, every look is drawn solid; with Reduce Motion on, the HUD opens without its fly-out and the planets hold still."),
         ]),
 
         HelpTopic(id: "app-menus", title: "Your Apps' Menus", symbol: "menubar.rectangle", blocks: [
@@ -200,7 +202,7 @@ enum Help {
         ]),
 
         HelpTopic(id: "sync", title: "Sync and Settings", symbol: "icloud", blocks: [
-            .text("Turn on \"Sync settings with your other Macs\" in Settings › General to share your buttons, look, shortcut, triggers and asking before quitting through iCloud Drive, and to add up Activity across your Macs. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
+            .text("Turn on \"Sync settings with your other Macs\" in Settings › Sync & Updates to share your buttons, look, shortcut, triggers and asking before quitting through iCloud Drive, and to add up Activity across your Macs. They're encrypted with a passphrase you choose; enter the same one on each Mac."),
             .text("Show in Dock and Show in menu bar choose where ToolHUD appears. With both off, open ToolHUD again from Finder or Spotlight to reach Settings."),
             .text("Reset to Defaults… puts buttons, look, shortcut, triggers and asking before quitting back to how ToolHUD started; login and sync stay as they are."),
             .tip("Quitting asks first, since the HUD's shortcut and mouse trigger stop and your apps' menus go back to their own icons. Turn off \"Ask before quitting\" in Settings › General, or tick \"Don't ask again\" when it asks."),
@@ -215,7 +217,7 @@ enum Help {
         ]),
 
         HelpTopic(id: "updates", title: "Updates", symbol: "arrow.down.circle", blocks: [
-            .text("Settings › General › Updates chooses what ToolHUD does when a new version is out: install it automatically when you're not using your Mac, ask you first, or not check at all. Check Now looks right away."),
+            .text("Settings › Sync & Updates chooses what ToolHUD does when a new version is out: install it automatically when you're not using your Mac, ask you first, or not check at all. Check Now looks right away."),
             .heading("What's new"),
             .text("The update window shows the notes for the latest releases, with the ones you don't have yet marked New. \"Don't remind me about this version\" is ticked to begin with: click Not Now with it ticked, and ToolHUD stops reminding you about that version (Check Now still offers it). Untick it to be reminded again."),
             .text("After an update that installed itself, Settings shows what changed the next time it opens. Tick \"Don't show this again\" to put it away. What's New… beside Check Now shows the notes any time."),

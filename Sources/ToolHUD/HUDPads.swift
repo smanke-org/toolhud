@@ -136,6 +136,8 @@ private struct PadBackdrop: View {
                 shape.fill(Color.white.opacity(0.45 * model.opacity))
                     .overlay(shape.strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
                     .frame(width: rect.width, height: rect.height).position(x: rect.midX, y: rect.midY)
+            case .liquidGlass:
+                EmptyView()
             case .planetary:
                 // An outer belt the moons sit on.
                 Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1)
@@ -216,6 +218,8 @@ private struct PadCell: View {
     /// In a column (name beside the button) rather than a row (name under it).
     let column: Bool
     let item: PadItem
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         switch look {
@@ -229,6 +233,7 @@ private struct PadCell: View {
         case .constellation: constellation
         case .glassPills: glassPills
         case .planetary: planetary
+        case .liquidGlass: liquidGlass
         }
     }
 
@@ -237,10 +242,10 @@ private struct PadCell: View {
     /// The round part, then the name, then the key: side by side in a column, stacked in a row.
     @ViewBuilder
     private func parts(_ lead: some View, spacing: Double = 10, nameColor: Color, nameFont: Font = .system(size: 12, weight: .medium),
-                       uppercase: Bool = false, keyTint: Color = .white) -> some View {
+                       uppercase: Bool = false, keyTint: Color = .white, litNameColor: Color = .white) -> some View {
         let name = Text(uppercase ? item.slot.name.uppercased() : item.slot.name)
             .font(nameFont)
-            .foregroundStyle(on ? Color.white : nameColor)
+            .foregroundStyle(on ? litNameColor : nameColor)
             .lineLimit(1).minimumScaleFactor(0.7)
         let key = SlotKeyCap(index: item.index, label: item.key, on: on, tint: keyTint)
         if column {
@@ -272,7 +277,7 @@ private struct PadCell: View {
         .frame(width: 40, height: 40)
         .shadow(color: on ? item.color.opacity(0.6) : .clear, radius: 14)
         .scaleEffect(item.fired ? 0.94 : on ? 1.1 : 1)
-        .animation(.spring(response: 0.22, dampingFraction: 0.6), value: on),
+        .hudAnimation(.spring(response: 0.22, dampingFraction: 0.6), value: on),
         nameColor: .white.opacity(0.82))
     }
 
@@ -288,7 +293,7 @@ private struct PadCell: View {
         }
         .frame(width: 40, height: 40)
         .scaleEffect(on ? 1.12 : 1)
-        .animation(.spring(response: 0.25, dampingFraction: 0.55), value: on),
+        .hudAnimation(.spring(response: 0.25, dampingFraction: 0.55), value: on),
         nameColor: .white.opacity(0.82))
     }
 
@@ -396,7 +401,7 @@ private struct PadCell: View {
         }
         .shadow(color: on ? item.color.opacity(0.7) : .clear, radius: 14)
         .scaleEffect(on ? 1.1 : 1)
-        .animation(.spring(response: 0.2, dampingFraction: 0.55), value: on)
+        .hudAnimation(.spring(response: 0.2, dampingFraction: 0.55), value: on)
     }
 
     // MARK: Red Alert: blades
@@ -447,7 +452,7 @@ private struct PadCell: View {
         }
         .frame(width: 36, height: 36)
         .scaleEffect(on ? 1.15 : 1)
-        .animation(.spring(response: 0.25, dampingFraction: 0.5), value: on),
+        .hudAnimation(.spring(response: 0.25, dampingFraction: 0.5), value: on),
         nameColor: ice.opacity(0.72), keyTint: ice)
     }
 
@@ -477,7 +482,21 @@ private struct PadCell: View {
         .overlay(Capsule().strokeBorder(on ? item.color : Color.white.opacity(0.75), lineWidth: 1))
         .shadow(color: on ? item.color.opacity(0.45) : .black.opacity(0.18), radius: on ? 12 : 8, y: 4)
         .scaleEffect(on ? 1.06 : 1)
-        .animation(.spring(response: 0.22, dampingFraction: 0.55), value: on)
+        .hudAnimation(.spring(response: 0.22, dampingFraction: 0.55), value: on)
+    }
+
+    // MARK: Liquid Glass: glass buttons, like the Orbit's
+
+    private var liquidGlass: some View {
+        let ink: Color = scheme == .dark ? .white : Color(white: 0.11)
+        return parts(SlotGlyph(symbol: item.slot.symbol, size: 16, color: on ? .white : ink)
+            .frame(width: 40, height: 40)
+            .glassCircle(tint: on ? item.color : nil, opacity: model.opacity, solid: reduceTransparency, scheme: scheme)
+            .id(on)
+            .scaleEffect(on ? 1.12 : 1)
+            .hudAnimation(.spring(response: 0.25, dampingFraction: 0.6), value: on),
+            nameColor: ink.opacity(0.85), nameFont: .system(size: 12, weight: .semibold), keyTint: ink, litNameColor: ink)
+            .padding(.horizontal, column ? 4 : 0)
     }
 
     // MARK: Planetary: moons
@@ -495,7 +514,7 @@ private struct PadCell: View {
         .frame(width: size, height: size)
         .opacity(on ? 1 : max(model.opacity, 0.45))
         .scaleEffect(on ? 1.2 : 1)
-        .animation(.spring(response: 0.25, dampingFraction: 0.55), value: on)
+        .hudAnimation(.spring(response: 0.25, dampingFraction: 0.55), value: on)
         .frame(width: 42, height: 42)
         return parts(moon, nameColor: Color(hex: "#F0ECE4").opacity(0.72), keyTint: Color(hex: "#F0ECE4"))
     }
