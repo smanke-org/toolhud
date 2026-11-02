@@ -73,6 +73,7 @@ final class HotKeyCenter {
     func apply() {
         installHandlerOnce()
         unregister()
+        defer { if !paused { ShortcutsLensReport.publish() } }
         guard !paused, let key = Preferences.shared.hotKey else {
             registrationFailed = false
             return
@@ -87,6 +88,13 @@ final class HotKeyCenter {
             registrationFailed = true
             NSLog("ToolHUD: shortcut \(key.display) not registered (\(status)), probably taken by another app")
         }
+    }
+
+    /// For ShortcutsLens: the HUD shortcut while it's registered. The keys buttons send
+    /// aren't ToolHUD's shortcuts, so they're left out.
+    var reportedShortcuts: [ShortcutsLensReport.Shortcut] {
+        guard ref != nil, let key = Preferences.shared.hotKey else { return [] }
+        return [.init(id: "hotKey", title: "Show HUD", keyCode: Int(key.keyCode), carbonModifiers: Int(key.carbonModifiers))]
     }
 
     /// While a shortcut is being recorded, the current one must not fire.

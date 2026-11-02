@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         HUDController.shared.start()
         HotKeyCenter.shared.apply()
+        ShortcutsLensReport.start { HotKeyCenter.shared.reportedShortcuts }
         AccessibilityTrust.shared.onChange = {
             MouseTriggers.shared.apply()
             ExtraTriggers.shared.apply()
