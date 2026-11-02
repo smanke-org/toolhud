@@ -5,7 +5,7 @@ the mouse in any app, and a ring of buttons opens around the pointer. Click a bu
 runs: capture text with TextLens, turn on ClickLens's spotlight, open PasteLens's Quick
 Paste, search your ExpansionLens snippets (1.0.0 or later), or press any key combination in any app.
 
-<p align="center"><img src="docs/images/toolhud-halo.jpg" width="480" alt="The ToolHUD Halo ring with eight buttons, Capture text lit at the top and its name and app shown in the center"></p>
+<p align="center"><img src="docs/images/toolhud-halo.jpg" width="480" alt="The ToolHUD Halo ring with eight numbered buttons, Capture text lit at the top and its name, app and key shown in the center"></p>
 
 ## Download
 
@@ -41,16 +41,20 @@ Requires macOS 26 or later.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/toolhud-command-deck.jpg" alt="The Command Deck look, a panel of eight numbered keycaps such as Capture text, Spotlight and Quick Paste, each labeled with its app"><br><sub><b>Command Deck.</b> One of eleven looks: a panel of keycaps.</sub></td>
+<td width="50%"><img src="docs/images/toolhud-liquid-glass.jpg" alt="The Liquid Glass look, eight round glass buttons with their names in glass pills around a glass center showing Capture text and TextLens, over a colorful wallpaper"><br><sub><b>Liquid Glass.</b> System glass buttons that follow Light and Dark.</sub></td>
 <td width="50%"><img src="docs/images/toolhud-stargate.jpg" alt="The Stargate look, a ring of chevrons with Draw arrow locked and named in the center"><br><sub><b>Stargate.</b> The chevrons are the buttons; the gate opens when one locks.</sub></td>
 </tr>
 <tr>
+<td width="50%"><img src="docs/images/toolhud-command-deck.jpg" alt="The Command Deck look, a panel of eight numbered keycaps such as Capture text, Spotlight and Quick Paste, each labeled with its app"><br><sub><b>Command Deck.</b> One of eleven looks: a panel of keycaps.</sub></td>
 <td width="50%"><img src="docs/images/toolhud-pad-halo.jpg" alt="The Halo ring with a button pad beside it holding Capture again, Paste stack, Search snippets, Watch area and Snippets on keys A, S, D, F and G"><br><sub><b>Button pad.</b> More buttons beside the ring, run with A to K.</sub></td>
-<td width="50%"><img src="docs/images/toolhud-settings-buttons.jpg" alt="ToolHUD Settings on the Buttons pane, with the button list and the Capture text button set to a TextLens lens action"><br><sub><b>Buttons.</b> Pick an app feature or a keystroke for each button.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/toolhud-settings-buttons.webp" alt="ToolHUD Settings on the Buttons pane, with the button list, a live preview of the ring with Capture text lit, and the Capture text button set to a TextLens lens action"><br><sub><b>Buttons.</b> Click a button in the live preview to edit it.</sub></td>
+<td width="50%"><img src="docs/images/toolhud-settings-activity.webp" alt="ToolHUD Settings on the Activity pane, with a bar chart of actions per month over the last year and totals for three Macs"><br><sub><b>Activity.</b> How many actions you run, on this Mac or all your Macs.</sub></td>
 </tr>
 <tr>
 <td width="50%" align="center"><img src="docs/images/toolhud-menu-hub.jpg" width="420" alt="ToolHUD's menu bar menu listing other apps as submenus, with ClickLens's submenu open"><br><sub><b>Your apps' menus.</b> Other apps as submenus of ToolHUD's menu.</sub></td>
-<td width="50%"><img src="docs/images/toolhud-settings-activity.webp" alt="ToolHUD Settings on the Activity pane, with a bar chart of actions over 90 days and totals for three Macs"><br><sub><b>Activity.</b> How many actions you run, on this Mac or all your Macs.</sub></td>
+<td width="50%"></td>
 </tr>
 </table>
 
