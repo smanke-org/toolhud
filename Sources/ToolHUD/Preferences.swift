@@ -98,12 +98,21 @@ final class Preferences {
 
     @ObservationIgnored private var loading = false
 
+    /// Where settings are kept: the standard defaults, or in a Debug test copy of the agent
+    /// command line (`APP_STORE`) a suite of its own, so it never changes the real ones.
+    nonisolated(unsafe) static let defaults: UserDefaults = {
+        #if DEBUG
+        if AgentSocket.isTestRun, let suite = UserDefaults(suiteName: AgentSocket.testDefaultsSuite) { return suite }
+        #endif
+        return .standard
+    }()
+
     private init() { load() }
 
     /// Puts every setting back to how a new install starts. Where the app appears,
     /// open-at-login, sync and update checks are left alone.
     func resetToDefaults() {
-        for key in Self.keys { UserDefaults.standard.removeObject(forKey: key) }
+        for key in Self.keys { Self.defaults.removeObject(forKey: key) }
         load()
         SettingsSync.shared.localDidChange()
     }
@@ -151,7 +160,7 @@ final class Preferences {
     private func load() {
         loading = true
         defer { loading = false }
-        let d = UserDefaults.standard
+        let d = Self.defaults
         func double(_ key: String, _ fallback: Double) -> Double { d.object(forKey: key) as? Double ?? fallback }
         func bool(_ key: String, _ fallback: Bool) -> Bool { d.object(forKey: key) as? Bool ?? fallback }
         func codable<T: Decodable>(_ key: String, _ fallback: T) -> T {
@@ -219,9 +228,11 @@ final class Preferences {
         // Staging runs share the installed app's settings; they may change them in memory only.
         if DebugHooks.isStaging { return }
         #endif
-        let defaults = UserDefaults.standard
+        let defaults = Self.defaults
         if let old = defaults.object(forKey: key) as? NSObject, let value, old.isEqual(value) { return }
         defaults.set(value, forKey: key)
+        // A test copy never syncs (SettingsSync reads the keychain as it starts).
+        if AgentSocket.isTestRun { return }
         SettingsSync.shared.localDidChange()
     }
 }

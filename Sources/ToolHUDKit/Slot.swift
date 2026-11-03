@@ -416,6 +416,18 @@ public enum SlotListEdit {
         slots.removeLast()
         count += 1
     }
+
+    /// Puts a new button at `index` (at most `count`, right after the shown ones), as the
+    /// agent command line adds one. The last hidden place makes room, so the list keeps its
+    /// length. Does nothing at the maximum, and says so.
+    @discardableResult
+    public static func insert(_ slot: Slot, at index: Int, slots: inout [Slot], count: inout Int, maxCount: Int) -> Bool {
+        guard count < maxCount, count < slots.count else { return false }
+        slots.insert(slot, at: min(max(index, 0), count))
+        slots.removeLast()
+        count += 1
+        return true
+    }
 }
 
 /// The buttons a particular app gets instead of the usual ones, while rings for each app

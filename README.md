@@ -35,7 +35,7 @@ Requires macOS 26 or later.
 - **Your apps' menus**: while ToolHUD runs, our other apps can leave the menu bar and appear as submenus of ToolHUD's menu.
 - **Activity**: Settings › Activity graphs how many actions you've run, on this Mac or all your Macs. Only the numbers are kept, never which buttons you ran.
 - **Encrypted sync**: your buttons, look, shortcut and triggers follow you to every Mac on the same iCloud account, end-to-end encrypted with your sync passphrase.
-- **Automation**: `toolhud://show` opens the HUD (`?ring=` an app's ring or a folder), `toolhud://repeat` runs the last action again, and the Shortcuts app gets Show ToolHUD and Run ToolHUD's Last Action Again.
+- **Automation**: `toolhud://show` opens the HUD (`?ring=` an app's ring or a folder), `toolhud://repeat` runs the last action again, the Shortcuts app gets Show ToolHUD and Run ToolHUD's Last Action Again, and the `toolhud` command line lets scripts and AI agents edit buttons and drive the HUD.
 
 ## Screenshots
 
@@ -221,6 +221,32 @@ The Shortcuts app also offers **Show ToolHUD** (with an optional ring or folder 
 **Run ToolHUD's Last Action Again**. Besides the keyboard shortcut and mouse trigger, the HUD
 can open on a double-tap of ⌘, ⌥, ⌃ or ⇧, or when the pointer rests in a screen corner
 (Settings › Triggers).
+
+### Command line and AI agents
+
+ToolHUD is also a command line tool, so scripts and AI agents (Claude Code, Codex) can list, add,
+change and delete buttons (in the usual ring, the button pad and each app's ring), see what our
+apps' features can do, change the look, open or close the HUD, and run a button. Commands run in
+the open app, and Settings shows each change at once. Link it once to type `toolhud`:
+
+```bash
+ln -s /Applications/ToolHUD.app/Contents/MacOS/ToolHUD ~/.local/bin/toolhud
+```
+
+```bash
+toolhud help
+toolhud buttons list --json
+toolhud buttons add --kind keystroke --keys "⇧⌘S" --name "Save as" --symbol square.and.arrow.down
+toolhud buttons update 3f2a9c1e --color teal
+```
+
+Every command takes `--json`. Deleting a button only shows what it would delete until you add
+`--yes`. For MCP apps such as Claude Desktop, the same commands are served by
+`/Applications/ToolHUD.app/Contents/MacOS/ToolHUD mcp`:
+
+```bash
+claude mcp add --scope user toolhud -- /Applications/ToolHUD.app/Contents/MacOS/ToolHUD mcp
+```
 
 ## Build from source
 

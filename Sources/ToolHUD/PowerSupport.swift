@@ -13,7 +13,7 @@ enum LastAction {
 
     static var slot: Slot? {
         if let cached { return cached }
-        let stored = UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(Slot.self, from: $0) }
+        let stored = Preferences.defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(Slot.self, from: $0) }
         cached = .some(stored)
         return stored
     }
@@ -24,7 +24,7 @@ enum LastAction {
         #if DEBUG
         if DebugHooks.isStaging { return }
         #endif
-        UserDefaults.standard.set(try? JSONEncoder().encode(slot), forKey: key)
+        Preferences.defaults.set(try? JSONEncoder().encode(slot), forKey: key)
     }
 }
 

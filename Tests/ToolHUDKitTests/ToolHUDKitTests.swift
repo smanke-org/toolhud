@@ -604,6 +604,20 @@ private func names(_ n: Int) -> [Slot] { (0..<n).map { Slot(name: "B\($0)", symb
     #expect(count == 12)
 }
 
+@Test func insertingAButtonKeepsTheListLength() {
+    var slots = names(12), count = 3
+    let new = Slot(name: "New", symbol: "star", mode: .open)
+    #expect(SlotListEdit.insert(new, at: 99, slots: &slots, count: &count, maxCount: 12))
+    #expect(count == 4)
+    #expect(slots.count == 12)
+    #expect(slots.prefix(4).map(\.name) == ["B0", "B1", "B2", "New"])
+    #expect(SlotListEdit.insert(new, at: 0, slots: &slots, count: &count, maxCount: 12))
+    #expect(slots.prefix(5).map(\.name) == ["New", "B0", "B1", "B2", "New"])
+    count = 12
+    #expect(!SlotListEdit.insert(new, at: 0, slots: &slots, count: &count, maxCount: 12))
+    #expect(count == 12)
+}
+
 // MARK: - 2.0: new kinds, folders, app rings, search, triggers
 
 @Test func newButtonKindsRoundTrip() throws {

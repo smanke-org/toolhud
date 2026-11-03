@@ -214,6 +214,15 @@ enum Help {
                 ("toolhud://settings", "Open Settings"),
             ]),
             .text("Use these links from Shortcuts, scripts, or a launcher."),
+            .heading("Command line and AI agents"),
+            .text("ToolHUD is also a command line tool, so scripts and AI agents such as Claude Code or Codex can list, add, change and delete your buttons, in the usual ring, the button pad and each app's ring, change the look, open or close the HUD, and run a button. Commands run in the open ToolHUD, and Settings shows each change at once. Deleting a button needs --yes."),
+            .keys([
+                ("toolhud help", "List every command and its options"),
+                ("toolhud buttons list", "The buttons that show, with their ids"),
+                ("toolhud buttons add --kind open --url https://example.com", "Add a button after the last one"),
+                ("toolhud mcp", "Offer the same commands to MCP apps, such as Claude Desktop"),
+            ]),
+            .text("To type toolhud in Terminal, link it once: ln -s /Applications/ToolHUD.app/Contents/MacOS/ToolHUD ~/.local/bin/toolhud (with ~/.local/bin on your PATH). MCP apps take the full path to that program, followed by mcp."),
         ]),
 
         HelpTopic(id: "updates", title: "Updates", symbol: "arrow.down.circle", blocks: [

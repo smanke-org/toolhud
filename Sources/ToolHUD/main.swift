@@ -2,10 +2,15 @@ import AppKit
 import SwiftUI
 import ToolHUDKit
 
+// `toolhud <command>` (the app binary under a short name): run it against the running app and
+// exit, without starting a second copy. See Agent/AgentCLI.swift.
+if let code = AgentCLI.runIfRequested() { exit(code) }
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
-app.setActivationPolicy(AppPresence.showInDock ? .regular : .accessory)
+// A test copy of the agent CLI stays out of the Dock.
+app.setActivationPolicy(AppPresence.showInDock && !AgentSocket.isTestRun ? .regular : .accessory)
 app.run()
 
 /// Quits ToolHUD without asking: for quitting itself (installing an update, ending a test).
@@ -42,9 +47,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Set at the end of the first launch, so its absence means a brand-new install.
         let newInstall = !UserDefaults.standard.bool(forKey: "askedForAccessibility")
         #if DEBUG
+        // A test run of the agent CLI (APP_STORE): its own settings and activity file, and the
+        // agent socket. Nothing else starts: no sync, shortcut, mouse triggers, key tap, menu
+        // bar item, menu hub, ShortcutsLens report, updater or Accessibility prompt.
+        if AgentSocket.isTestRun {
+            _ = Preferences.shared
+            AgentSocket.listen { AgentRouter.handle($0) }
+            return
+        }
         // Screenshot runs share the installed app's settings, so they stage and stop there.
         if DebugHooks.run() { return }
         #endif
+        // `toolhud` and the MCP server talk to the app through this.
+        AgentSocket.listen { AgentRouter.handle($0) }
         if newInstall { SettingsSync.shared.adoptOnNewInstall() }
         SettingsSync.shared.start()
         ActivitySync.shared.start()
@@ -100,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if AgentSocket.isTestRun { return }
         MenuHubHost.shared.stop()
         ActivitySync.shared.flush()
     }

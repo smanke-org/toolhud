@@ -20,6 +20,12 @@ final class ActivityStore {
         if let override = ProcessInfo.processInfo.environment["TOOLHUD_ACTIVITY_FILE"] {
             return URL(fileURLWithPath: override)
         }
+        #if DEBUG
+        // An agent CLI test copy keeps its counts in its APP_STORE folder.
+        if AgentSocket.isTestRun, let store = ProcessInfo.processInfo.environment["APP_STORE"] {
+            return URL(fileURLWithPath: store, isDirectory: true).appending(path: "activity.json")
+        }
+        #endif
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appending(path: "ToolHUD").appending(path: "activity.json")
     }()
