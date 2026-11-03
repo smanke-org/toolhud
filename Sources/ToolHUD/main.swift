@@ -189,14 +189,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             show.keyEquivalent = shortcut.key
             show.keyEquivalentModifierMask = shortcut.mask
         }
-        menu.addItem(show)
+        menu.addItem(show.showIcon("circle.circle"))
 
         if !AccessibilityTrust.shared.isTrusted {
             menu.addItem(.separator())
             let warn = NSMenuItem(title: "Allow Mouse Triggers and Keystrokes…", action: #selector(allowAccessibility), keyEquivalent: "")
             warn.target = self
-            warn.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
-            menu.addItem(warn)
+            menu.addItem(warn.showIcon("exclamationmark.triangle"))
         }
         MenuHubHost.shared.addItems(to: menu)
 
@@ -204,13 +203,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let helpEntry = item("\(AppInfo.name) Help", #selector(showHelp))
         helpEntry.image = NSImage(systemSymbolName: "questionmark.circle", accessibilityDescription: nil)
         menu.addItem(helpEntry)
-        menu.addItem(item("Settings…", #selector(showSettings), key: ","))
+        menu.addItem(item("Settings…", #selector(showSettings), key: ",").showIcon("gearshape"))
         if let staged = AutoUpdater.shared.staged {
-            menu.addItem(item("Update to \(staged.version) Now (Otherwise Installs When Idle)", #selector(installUpdateNow)))
+            menu.addItem(item("Update to \(staged.version) Now (Otherwise Installs When Idle)", #selector(installUpdateNow)).showIcon("arrow.down.circle"))
         } else if let pending = UpdateAvailability.shared.pending {
-            menu.addItem(item("Update to \(pending)…", #selector(checkForUpdates)))
+            menu.addItem(item("Update to \(pending)…", #selector(checkForUpdates)).showIcon("arrow.down.circle"))
         } else {
-            menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+            menu.addItem(item("Check for Updates…", #selector(checkForUpdates)).showIcon("arrow.down.circle"))
         }
         menu.addItem(item("About \(AppInfo.name)", #selector(showAbout)))
         menu.addItem(item("Our other apps…", #selector(showOtherApps)))

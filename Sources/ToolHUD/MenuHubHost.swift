@@ -106,8 +106,10 @@ final class MenuHubHost: NSObject, NSMenuDelegate {
             let name = Self.name(of: app)
             let item = NSMenuItem(title: name, action: nil, keyEquivalent: "")
             // The app's live menu bar icon, so its state still shows; else its app icon.
-            item.image = send(.icon, to: id).flatMap { try? JSONDecoder().decode(HubImage.self, from: $0) }?.image
-                ?? Self.smallIcon(app.icon)
+            if let icon = send(.icon, to: id).flatMap({ try? JSONDecoder().decode(HubImage.self, from: $0) })?.image
+                ?? Self.smallIcon(app.icon) {
+                item.showIcon(icon)
+            }
             let submenu = GuestMenu(title: name)
             submenu.bundleID = id
             submenu.autoenablesItems = false
@@ -146,7 +148,11 @@ final class MenuHubHost: NSObject, NSMenuDelegate {
             item.isAlternate = entry.isAlternate
             item.indentationLevel = entry.indentation
             item.toolTip = entry.toolTip
-            item.image = entry.image?.image
+            if entry.imageInTitle == true, let icon = entry.image?.image {
+                item.showIcon(icon)
+            } else {
+                item.image = entry.image?.image
+            }
             item.representedObject = Pick(bundleID: bundleID, path: entry.path)
             if let children = entry.children {
                 let submenu = NSMenu(title: entry.title)
