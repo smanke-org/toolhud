@@ -450,6 +450,7 @@ struct SlotEditor: View {
 
     /// The kinds this button may be: folders and app menus only while they're turned on,
     /// and never a kind the context rules out. The current kind always stays listed.
+    /// Listed alphabetically by title.
     private var modes: [ActionMode] {
         ActionMode.allCases.filter { mode in
             if mode == slot.mode { return true }
@@ -460,6 +461,7 @@ struct SlotEditor: View {
             default: return true
             }
         }
+        .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     }
 
     var body: some View {
@@ -592,14 +594,16 @@ struct SlotEditor: View {
     @ViewBuilder private var lensFields: some View {
         Picker("App", selection: Binding(get: { slot.lensApp ?? "" }, set: { chooseApp($0) })) {
             if slot.lensApp == nil { Text("Choose an app").tag("") }
-            ForEach(directory.apps) { app in
+            ForEach(directory.apps.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { app in
                 Text(directory.installed[app.id] == nil ? "\(app.name) (not installed)" : app.name).tag(app.id)
             }
         }
         if let id = slot.lensApp, let app = directory.app(id) {
             Picker("Feature", selection: Binding(get: { slot.lensFeature ?? "" }, set: { chooseFeature($0, in: app) })) {
                 if slot.lensFeature == nil { Text("Choose a feature").tag("") }
-                ForEach(app.features) { Text($0.title).tag($0.id) }
+                ForEach(app.features.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) {
+                    Text($0.title).tag($0.id)
+                }
             }
         }
         let status = directory.status(of: slot)
