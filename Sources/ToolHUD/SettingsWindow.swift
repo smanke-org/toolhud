@@ -370,7 +370,7 @@ struct GeneralSettings: View {
                     HStack {
                         Button("About ToolHUD") {
                             NSApp.activate(ignoringOtherApps: true)
-                            NSApp.orderFrontStandardAboutPanel(nil)
+                            AppInfo.showAbout()
                         }
                         Button("Our other apps…") {
                             if let url = URL(string: "https://stevemanke.com/") { NSWorkspace.shared.open(url) }
