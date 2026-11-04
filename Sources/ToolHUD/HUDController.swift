@@ -263,7 +263,7 @@ final class HUDController {
         scale = prefs.size.scale
         model.scale = scale
 
-        let mouse = NSEvent.mouseLocation
+        let mouse = Self.mouseLocation
         var screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main
         #if DEBUG
         if let debugScreen = DebugHooks.screen { screen = debugScreen }
@@ -296,10 +296,18 @@ final class HUDController {
             MainActor.assumeIsolated { HUDController.shared.step() }
         }
         RunLoop.main.add(ticker!, forMode: .common)
-        outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in
-            MainActor.assumeIsolated { HUDController.shared.dismiss() }
+        #if DEBUG
+        // A demo recording drives the HUD itself; real clicks and keys stay with the user.
+        let staged = DebugHooks.pointer != nil
+        #else
+        let staged = false
+        #endif
+        if !staged {
+            outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in
+                MainActor.assumeIsolated { HUDController.shared.dismiss() }
+            }
+            installKeyTap()
         }
-        installKeyTap()
         step()
         if case .folder(let folder) = ring { openFolder(folder) }
     }
@@ -446,7 +454,7 @@ final class HUDController {
     private func step() {
         guard isShowing else { return }
         model.time += Self.tick
-        let mouse = NSEvent.mouseLocation
+        let mouse = Self.mouseLocation
         if hypot(mouse.x - openPointer.x, mouse.y - openPointer.y) > 8 { pointerMoved = true }
         let local = HUDPoint(Double(mouse.x - center.x) / scale, -Double(mouse.y - center.y) / scale)
 
@@ -509,6 +517,8 @@ final class HUDController {
     #if DEBUG
     var debugPanel: NSPanel? { panel }
     var debugLevels: Int { levels.count }
+    /// Where a HUD point is on screen, for the demo recording's pointer.
+    func debugScreenPoint(_ p: HUDPoint) -> CGPoint { CGPoint(x: center.x + p.x * scale, y: center.y - p.y * scale) }
 
     /// Shows `visualization` with button `highlight` lit, ignoring the pointer, for screenshots.
     /// A negative `highlight` leaves the pointer in charge; -2 shows the gear lit.
@@ -546,6 +556,14 @@ final class HUDController {
     }
     #endif
 
+    /// Where the pointer is; a demo recording moves a pointer of its own.
+    private static var mouseLocation: CGPoint {
+        #if DEBUG
+        if let pointer = DebugHooks.pointer { return pointer }
+        #endif
+        return NSEvent.mouseLocation
+    }
+
     private func setHighlight(_ index: Int?) {
         guard index != model.highlighted else { return }
         model.highlighted = index
@@ -570,7 +588,7 @@ final class HUDController {
 
     /// Where the pointer is, in the HUD's own coordinates.
     private var pointerInHUD: HUDPoint {
-        let mouse = NSEvent.mouseLocation
+        let mouse = Self.mouseLocation
         return HUDPoint(Double(mouse.x - center.x) / scale, -Double(mouse.y - center.y) / scale)
     }
 
@@ -622,7 +640,7 @@ final class HUDController {
         let n = model.buttonCount
         guard n > 0 else { return }
         let current = model.highlighted ?? (by > 0 ? -1 : 0)
-        keyboardPointer = NSEvent.mouseLocation
+        keyboardPointer = Self.mouseLocation
         model.gearHovered = false
         let next = ((current + by) % n + n) % n
         setHighlight(next)
@@ -767,7 +785,7 @@ final class HUDController {
             if !model.results.isEmpty {
                 model.resultIndex = (model.resultIndex + (up ? -1 : 1) + model.results.count) % model.results.count
             }
-            keyboardPointer = NSEvent.mouseLocation
+            keyboardPointer = Self.mouseLocation
         case KeyCode.left, KeyCode.right, KeyCode.forwardDelete:
             break
         default:

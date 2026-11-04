@@ -23,6 +23,9 @@ enum DebugScenarios {
         case "hud": hud()
         case "kinds": kinds()
         case "doubletap": doubleTap()
+        case "demo":
+            DebugHooks.freezeHighlight = false
+            DemoStage.run()
         case "statenote":
             FeatureStates.shared.requestRefresh()
             pump(4)

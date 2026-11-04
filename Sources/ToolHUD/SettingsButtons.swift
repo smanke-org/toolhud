@@ -243,6 +243,9 @@ extension ButtonsSettings {
         .onChange(of: prefs.padEnabled) { _, on in if !on { list = .ring; selection = 0 } }
         #if DEBUG
         .onAppear { if let button = DebugHooks.selectedButton { selection = button } }
+        .onReceive(NotificationCenter.default.publisher(for: DemoStage.selectButton)) { note in
+            if let button = note.object as? Int { list = .ring; selection = button }
+        }
         #endif
     }
 

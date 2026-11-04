@@ -36,6 +36,8 @@ import ToolHUDKit
 @MainActor
 enum DebugHooks {
     static var freezeHighlight = false
+    /// A pointer of the demo recording's own, in place of the real one (screen coordinates).
+    static var pointer: CGPoint?
     /// The look `debugShow` asked for, used in place of the saved one.
     static var look: Visualization?
 
