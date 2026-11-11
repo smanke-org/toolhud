@@ -49,10 +49,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         #if DEBUG
         // A test run of the agent CLI (APP_STORE): its own settings and activity file, and the
         // agent socket. Nothing else starts: no sync, shortcut, mouse triggers, key tap, menu
-        // bar item, menu hub, ShortcutsLens report, updater or Accessibility prompt.
+        // bar item, menu hub, ShortcutsLens report (unless asked for below), updater or
+        // Accessibility prompt.
         if AgentSocket.isTestRun {
             _ = Preferences.shared
             AgentSocket.listen { AgentRouter.handle($0) }
+            // TOOLHUD_TEST_SHORTCUTS: also the HUD shortcut (it opens nothing here) and the
+            // ShortcutsLens report, on the test suite's settings, to test Change Shortcut.
+            if ProcessInfo.processInfo.environment["TOOLHUD_TEST_SHORTCUTS"] != nil {
+                HotKeyCenter.shared.apply()
+                HotKeyCenter.shared.startShortcutsLensReport()
+            }
             return
         }
         // Screenshot runs share the installed app's settings, so they stage and stop there.
@@ -66,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         HUDController.shared.start()
         HotKeyCenter.shared.apply()
-        ShortcutsLensReport.start { HotKeyCenter.shared.reportedShortcuts }
+        HotKeyCenter.shared.startShortcutsLensReport()
         AccessibilityTrust.shared.onChange = {
             MouseTriggers.shared.apply()
             ExtraTriggers.shared.apply()

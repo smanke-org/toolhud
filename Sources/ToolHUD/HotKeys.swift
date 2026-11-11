@@ -13,6 +13,38 @@ extension Shortcut {
                   key: KeyNames.name(keyCode: event.keyCode, characters: event.charactersIgnoringModifiers))
     }
 
+    /// Builds one from a key code and Carbon modifiers (ShortcutsLens's Change Shortcut), named
+    /// the way a key press would be in the current keyboard layout. Nil without ⌘ ⌥ or ⌃, as
+    /// the Settings recorder would refuse it for the HUD shortcut.
+    init?(keyCode: Int, carbonModifiers: Int) {
+        guard (0...127).contains(keyCode) else { return nil }
+        var m: KeyModifiers = []
+        if carbonModifiers & controlKey != 0 { m.insert(.control) }
+        if carbonModifiers & optionKey != 0 { m.insert(.option) }
+        if carbonModifiers & shiftKey != 0 { m.insert(.shift) }
+        if carbonModifiers & cmdKey != 0 { m.insert(.command) }
+        guard !m.intersection([.control, .option, .command]).isEmpty else { return nil }
+        let code = UInt16(keyCode)
+        self.init(keyCode: code, modifiers: m, key: KeyNames.name(keyCode: code, characters: Self.layoutCharacter(code)))
+    }
+
+    /// What the key types with no modifiers in the current layout ("h" for kVK_ANSI_H on QWERTY).
+    private static func layoutCharacter(_ keyCode: UInt16) -> String? {
+        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        let data = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
+        return data.withUnsafeBytes { raw -> String? in
+            guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return nil }
+            var dead: UInt32 = 0
+            var chars = [UniChar](repeating: 0, count: 4)
+            var length = 0
+            let status = UCKeyTranslate(layout, keyCode, UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                                        OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &length, &chars)
+            guard status == noErr, length > 0 else { return nil }
+            return String(utf16CodeUnits: chars, count: length)
+        }
+    }
+
     static func modifiers(_ flags: NSEvent.ModifierFlags) -> KeyModifiers {
         var m: KeyModifiers = []
         if flags.contains(.control) { m.insert(.control) }
@@ -95,6 +127,34 @@ final class HotKeyCenter {
     var reportedShortcuts: [ShortcutsLensReport.Shortcut] {
         guard ref != nil, let key = Preferences.shared.hotKey else { return [] }
         return [.init(id: "hotKey", title: "Show HUD", keyCode: Int(key.keyCode), carbonModifiers: Int(key.carbonModifiers))]
+    }
+
+    /// ShortcutsLens's Change Shortcut: saves the keys as the Settings recorder does (so Settings
+    /// and the menu show them and sync carries them) and registers again. Nil when done, or why not.
+    func change(id: String, keyCode: Int, carbonModifiers: Int) -> String? {
+        guard id == "hotKey" else { return "ToolHUD has no shortcut called \(id)." }
+        guard let key = Shortcut(keyCode: keyCode, carbonModifiers: carbonModifiers) else {
+            return "The Show HUD shortcut needs ⌘, ⌥ or ⌃."
+        }
+        if let purpose = SystemShortcuts.purpose(of: key) {
+            return "\(key.display) is the macOS shortcut for \(purpose)."
+        }
+        let prefs = Preferences.shared
+        let previous = prefs.hotKey
+        prefs.hotKey = key
+        apply()
+        guard registrationFailed else { return nil }
+        // Taken by another app: keep the old keys rather than leave the HUD without a shortcut.
+        prefs.hotKey = previous
+        apply()
+        return "\(key.display) is taken by another app, so ToolHUD kept \(previous?.display ?? "no shortcut")."
+    }
+
+    /// Starts answering ShortcutsLens, Change Shortcut included.
+    func startShortcutsLensReport() {
+        ShortcutsLensReport.start({ HotKeyCenter.shared.reportedShortcuts }, change: { id, keyCode, modifiers in
+            HotKeyCenter.shared.change(id: id, keyCode: keyCode, carbonModifiers: modifiers)
+        })
     }
 
     /// While a shortcut is being recorded, the current one must not fire.
