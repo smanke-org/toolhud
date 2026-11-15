@@ -18,7 +18,17 @@ import Testing
     #expect(KeyNames.name(keyCode: KeyCode.t, characters: "t") == "T")
 }
 
+@Test func functionKeysAreKnown() {
+    #expect(KeyNames.functionKeyCodes.count == 20)
+    #expect(KeyNames.functionKeyCodes.first == 122)
+    #expect(KeyNames.functionKeyCodes.last == 90)
+    #expect(KeyNames.isFunctionKey(96))
+    #expect(!KeyNames.isFunctionKey(KeyCode.space))
+}
+
 @Test func systemShortcutsAreRecognized() {
+    #expect(SystemShortcuts.purpose(of: Shortcut(keyCode: KeyCode.c, modifiers: [.command], key: "C")) == "Copy")
+    #expect(SystemShortcuts.purpose(of: Shortcut(keyCode: KeyCode.up, modifiers: [.control], key: "↑")) == "Mission Control")
     #expect(SystemShortcuts.purpose(of: Shortcut(keyCode: KeyCode.space, modifiers: [.command], key: "Space")) == "Spotlight")
     #expect(SystemShortcuts.purpose(of: .defaultHUD) == nil)
 }

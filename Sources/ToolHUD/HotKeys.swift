@@ -14,8 +14,8 @@ extension Shortcut {
     }
 
     /// Builds one from a key code and Carbon modifiers (ShortcutsLens's Change Shortcut), named
-    /// the way a key press would be in the current keyboard layout. Nil without ⌘ ⌥ or ⌃, as
-    /// the Settings recorder would refuse it for the HUD shortcut.
+    /// the way a key press would be in the current keyboard layout. Nil without ⌘ ⌥ or ⌃ (F-keys
+    /// may stand alone), as the Settings editor would refuse it for the HUD shortcut.
     init?(keyCode: Int, carbonModifiers: Int) {
         guard (0...127).contains(keyCode) else { return nil }
         var m: KeyModifiers = []
@@ -23,13 +23,19 @@ extension Shortcut {
         if carbonModifiers & optionKey != 0 { m.insert(.option) }
         if carbonModifiers & shiftKey != 0 { m.insert(.shift) }
         if carbonModifiers & cmdKey != 0 { m.insert(.command) }
-        guard !m.intersection([.control, .option, .command]).isEmpty else { return nil }
         let code = UInt16(keyCode)
-        self.init(keyCode: code, modifiers: m, key: KeyNames.name(keyCode: code, characters: Self.layoutCharacter(code)))
+        guard !m.intersection([.control, .option, .command]).isEmpty || KeyNames.isFunctionKey(code) else { return nil }
+        self.init(keyCode: code, modifiers: m)
+    }
+
+    /// The key with these modifiers, named as the current keyboard layout types it.
+    init(keyCode: UInt16, modifiers: KeyModifiers) {
+        self.init(keyCode: keyCode, modifiers: modifiers,
+                  key: KeyNames.name(keyCode: keyCode, characters: Self.layoutCharacter(keyCode)))
     }
 
     /// What the key types with no modifiers in the current layout ("h" for kVK_ANSI_H on QWERTY).
-    private static func layoutCharacter(_ keyCode: UInt16) -> String? {
+    static func layoutCharacter(_ keyCode: UInt16) -> String? {
         guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
               let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
         let data = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
@@ -106,6 +112,10 @@ final class HotKeyCenter {
         installHandlerOnce()
         unregister()
         defer { if !paused { ShortcutsLensReport.publish() } }
+        #if DEBUG
+        // The shortcut editor test runs beside the real ToolHUD: it must not take its keys.
+        if DebugHooks.blockHotKeys { registrationFailed = false; return }
+        #endif
         guard !paused, let key = Preferences.shared.hotKey else {
             registrationFailed = false
             return
@@ -129,12 +139,12 @@ final class HotKeyCenter {
         return [.init(id: "hotKey", title: "Show HUD", keyCode: Int(key.keyCode), carbonModifiers: Int(key.carbonModifiers))]
     }
 
-    /// ShortcutsLens's Change Shortcut: saves the keys as the Settings recorder does (so Settings
+    /// ShortcutsLens's Change Shortcut: saves the keys as the Settings editor does (so Settings
     /// and the menu show them and sync carries them) and registers again. Nil when done, or why not.
     func change(id: String, keyCode: Int, carbonModifiers: Int) -> String? {
         guard id == "hotKey" else { return "ToolHUD has no shortcut called \(id)." }
         guard let key = Shortcut(keyCode: keyCode, carbonModifiers: carbonModifiers) else {
-            return "The Show HUD shortcut needs ⌘, ⌥ or ⌃."
+            return "The Show HUD shortcut needs ⌘, ⌥ or ⌃ (F-keys may stand alone)."
         }
         if let purpose = SystemShortcuts.purpose(of: key) {
             return "\(key.display) is the macOS shortcut for \(purpose)."
@@ -157,14 +167,17 @@ final class HotKeyCenter {
         })
     }
 
-    /// While a shortcut is being recorded, the current one must not fire.
+    /// While a shortcut is being set, the current one (and a double-tapped modifier) must not
+    /// open the HUD.
     func pause() {
         paused = true
+        ExtraTriggers.shared.suspended = true
         unregister()
     }
 
     func resume() {
         paused = false
+        ExtraTriggers.shared.suspended = false
         apply()
     }
 
@@ -211,96 +224,5 @@ enum ShortcutConflicts {
             return "Another app is already using \(shortcut.display), so ToolHUD can't. Pick another shortcut, or change it in that app."
         }
         return nil
-    }
-}
-
-/// Click, then press a shortcut. Esc cancels, Delete clears.
-struct ShortcutRecorder: NSViewRepresentable {
-    @Binding var shortcut: Shortcut?
-    /// A global shortcut needs ⌘, ⌥ or ⌃; a keystroke for a button may be any key.
-    var requireModifier = true
-    var placeholder = "Click to set"
-
-    func makeNSView(context: Context) -> RecorderButton {
-        let view = RecorderButton()
-        update(view)
-        return view
-    }
-
-    func updateNSView(_ view: RecorderButton, context: Context) { update(view) }
-
-    private func update(_ view: RecorderButton) {
-        view.onChange = { shortcut = $0 }
-        view.requireModifier = requireModifier
-        view.placeholder = placeholder
-        view.shortcut = shortcut
-    }
-
-    final class RecorderButton: NSButton {
-        var onChange: ((Shortcut?) -> Void)?
-        var requireModifier = true
-        var placeholder = "Click to set" { didSet { refresh() } }
-        var shortcut: Shortcut? { didSet { refresh() } }
-        private var recording = false { didSet { refresh() } }
-        private var monitor: Any?
-
-        override init(frame: NSRect) {
-            super.init(frame: frame)
-            bezelStyle = .rounded
-            target = self
-            action = #selector(toggle)
-            refresh()
-        }
-
-        required init?(coder: NSCoder) { fatalError() }
-
-        override var intrinsicContentSize: NSSize { NSSize(width: 150, height: super.intrinsicContentSize.height) }
-
-        private func refresh() {
-            title = recording ? "Press keys…" : (shortcut?.display ?? placeholder)
-        }
-
-        @objc private func toggle() {
-            recording ? stop() : start()
-        }
-
-        private func start() {
-            recording = true
-            HotKeyCenter.shared.pause()
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                guard let self else { return event }
-                let bare = event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
-                switch Int(event.keyCode) {
-                case kVK_Escape where bare:
-                    self.stop()
-                case kVK_Delete where bare, kVK_ForwardDelete where bare:
-                    self.shortcut = nil
-                    self.onChange?(nil)
-                    self.stop()
-                default:
-                    guard let key = Shortcut(event: event, requireModifier: self.requireModifier) else {
-                        NSSound.beep()
-                        return nil
-                    }
-                    self.shortcut = key
-                    self.onChange?(key)
-                    self.stop()
-                }
-                return nil
-            }
-        }
-
-        private func stop() {
-            recording = false
-            if let monitor { NSEvent.removeMonitor(monitor) }
-            monitor = nil
-            // The binding writes Preferences synchronously, so this registers the new key.
-            HotKeyCenter.shared.resume()
-        }
-
-        override func viewWillMove(toWindow newWindow: NSWindow?) {
-            if newWindow == nil, recording { stop() }
-            super.viewWillMove(toWindow: newWindow)
-        }
     }
 }

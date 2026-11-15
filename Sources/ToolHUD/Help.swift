@@ -151,7 +151,7 @@ enum Help {
 
         HelpTopic(id: "opening", title: "Opening the HUD", symbol: "cursorarrow.click.2", blocks: [
             .heading("Keyboard"),
-            .text("Your shortcut is {shortcut}. Record a different one in Settings › Triggers; a warning appears if macOS or another app already uses it. ShortcutsLens lists it under ToolHUD's name."),
+            .text("Your shortcut is {shortcut}. To change it, click it in Settings › Triggers to open its editor: turn on the modifier keys (⌃ ⌥ ⇧ ⌘), type a letter, number or symbol, or pick Space, an arrow or an F-key from the keyboard menu — or just press the new shortcut. Then click Set (or press Return); Esc cancels and Clear removes it. A shortcut needs ⌘, ⌥ or ⌃, except F-keys. A warning appears if macOS or another app already uses it. ShortcutsLens lists it under ToolHUD's name."),
             .heading("Mouse"),
             .text("Your mouse trigger is {mouse}. The HUD opens around the pointer in any app. Choices:"),
             .keys([
@@ -240,7 +240,7 @@ enum Help {
             .heading("An app button doesn't work"),
             .text("Make sure the app is installed and up to date (see Supported Apps). Open it once so macOS registers its link."),
             .heading("The shortcut does nothing"),
-            .text("Another app may use the same keys. Record a different one in Settings › Triggers."),
+            .text("Another app may use the same keys. If its editor in Settings › Triggers says \"Nothing came through\" when you press them, that app has them first. Set different keys there."),
         ]),
     ] }
 }

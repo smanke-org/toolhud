@@ -31,6 +31,10 @@ import ToolHUDKit
 ///                                      question a second later: presses Return, clicks Cancel or Quit
 ///                                      (ticking "Don't ask again" first for `suppress`), or with `off`
 ///                                      turns the setting off first; traces what the question showed
+///   TOOLHUD_DEBUG_SHORTCUT_EDITOR=<dir>  with TOOLHUD_DEBUG_SETTINGS=triggers: opens the HUD shortcut's editor,
+///                                      types, picks and presses keys in it, sets, cancels and clears, writes
+///                                      editor-*.png and triggers.png there and traces each step, then quits.
+///                                      No shortcut is registered in this run.
 ///
 /// Both open on the first Retina display, so the shots are taken at 2×.
 @MainActor
@@ -40,6 +44,9 @@ enum DebugHooks {
     static var pointer: CGPoint?
     /// The look `debugShow` asked for, used in place of the saved one.
     static var look: Visualization?
+
+    /// The shortcut editor test runs beside the real ToolHUD, so it registers no shortcut.
+    static var blockHotKeys: Bool { ProcessInfo.processInfo.environment["TOOLHUD_DEBUG_SHORTCUT_EDITOR"] != nil }
 
     /// Whether this is a staging run, which must not touch the keychain or sync.
     static var isStaging: Bool {
@@ -271,6 +278,13 @@ enum DebugHooks {
                                 window.makeKeyAndOrderFront(nil)
                                 trace("moved to \(window.frame) number=\(window.windowNumber) visible=\(window.isVisible) screen=\(String(describing: window.screen?.localizedName))")
                                 if let keys = env["TOOLHUD_DEBUG_KEYS"] { typeIntoKeyField(keys, window: window) }
+                                if let dir = env["TOOLHUD_DEBUG_SHORTCUT_EDITOR"] {
+                                    Task { @MainActor in
+                                        await shortcutEditorTest(dir: dir, window: window)
+                                        QuitConfirmation.quitNow()
+                                    }
+                                    return
+                                }
                                 guard let snapshot = env["TOOLHUD_DEBUG_SNAPSHOT"] else { return }
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                                     MainActor.assumeIsolated {
@@ -291,6 +305,112 @@ enum DebugHooks {
             return true
         }
         return false
+    }
+
+    /// `TOOLHUD_DEBUG_SHORTCUT_EDITOR`: works the HUD shortcut's editor the way a person would,
+    /// through its model and real key events, and traces what it shows.
+    private static func shortcutEditorTest(dir: String, window: NSWindow) async {
+        func recorders(in view: NSView) -> [ShortcutRecorder.RecorderButton] {
+            ((view as? ShortcutRecorder.RecorderButton).map { [$0] } ?? []) + view.subviews.flatMap(recorders)
+        }
+        func shot(_ view: NSView?, _ name: String) {
+            guard let view, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { trace("no view for \(name)"); return }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: (dir as NSString).appendingPathComponent(name)))
+        }
+        func wait(_ ms: Int = 400) async { try? await Task.sleep(for: .milliseconds(ms)) }
+        /// Waits for the editor to finish closing (the popover animates away).
+        func waitClosed(_ button: ShortcutRecorder.RecorderButton) async -> Bool {
+            for _ in 0..<30 where button.debugIsOpen { await wait(100) }
+            return !button.debugIsOpen
+        }
+        func send(_ code: UInt16, _ flags: NSEvent.ModifierFlags, to popover: NSView?) {
+            let number = popover?.window?.windowNumber ?? window.windowNumber
+            if let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: number,
+                                        context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: code) {
+                NSApp.sendEvent(e)
+            }
+        }
+        func modifierEvent(_ flags: CGEventFlags) -> NSEvent? {
+            guard let e = CGEvent(keyboardEventSource: nil, virtualKey: 55, keyDown: !flags.isEmpty) else { return nil }
+            e.type = .flagsChanged
+            e.flags = flags
+            return NSEvent(cgEvent: e)
+        }
+        let prefs = Preferences.shared
+        let original = prefs.hotKey
+        guard let content = window.contentView, let button = recorders(in: content).first else {
+            trace("editor: no shortcut box in Settings"); return
+        }
+        trace("editor: box reads \(button.debugTitle), shortcut \(original?.display ?? "none")")
+
+        // Open, type "+" with no modifiers, a bare letter, then an F-key alone.
+        button.performClick(nil)
+        await wait()
+        guard let model = button.debugModel else { trace("editor: did not open"); return }
+        trace("editor: open; box reads \(button.debugTitle); double-tap suspended \(ExtraTriggers.shared.suspended); loaded \(model.combo?.display ?? "-") key box \(model.keyText)")
+        model.typed("Space")
+        trace("editor: box handed back Space → \(model.combo?.display ?? "-")")
+        model.typed("Spac")
+        trace("editor: deleted a letter of Space → key \(String(describing: model.keyCode)) box '\(model.keyText)'")
+        model.control = false; model.option = false; model.shift = false; model.command = false
+        model.typed("+")
+        trace("editor: typed + → key \(model.keyText) shift \(model.shift) combo \(model.combo?.display ?? "-") problem \(model.problem ?? "-")")
+        await wait(); shot(button.debugPopoverView, "editor-plus.png")
+        model.shift = false
+        model.typed("k")
+        trace("editor: typed k → key \(model.keyText) problem \(model.problem ?? "-")")
+        model.typed("é")
+        trace("editor: typed é → key \(String(describing: model.keyCode)) problem \(model.problem ?? "-")")
+        model.choose(96)
+        trace("editor: picked F5 → combo \(model.combo?.display ?? "-") problem \(model.problem ?? "-")")
+
+        // Real key events through the editor's monitor: ⌘C (macOS's Copy), then a modifier
+        // pressed and let go with nothing between (another app took the keys).
+        send(8, [.command], to: button.debugPopoverView)
+        trace("editor: pressed ⌘C → combo \(model.combo?.display ?? "-") warning \(model.takenBy ?? "-")")
+        if let down = modifierEvent(.maskCommand), let up = modifierEvent([]) {
+            NSApp.sendEvent(down); NSApp.sendEvent(up)
+        }
+        trace("editor: modifier down and up alone → hint \(model.showHint)")
+        await wait(); shot(button.debugPopoverView, "editor-copy-hint.png")
+
+        // ⌃⌥⌘J pressed, then Return sets it.
+        send(38, [.control, .option, .command], to: button.debugPopoverView)
+        trace("editor: pressed ⌃⌥⌘J → combo \(model.combo?.display ?? "-") hint \(model.showHint) problem \(model.problem ?? "-") warning \(model.takenBy ?? "-")")
+        await wait(); shot(button.debugPopoverView, "editor-set.png")
+        send(KeyCode.returnKey, [], to: button.debugPopoverView)
+        let closedAfterReturn = await waitClosed(button)
+        trace("editor: after Return → saved \(prefs.hotKey?.display ?? "none"), box \(button.debugTitle), closed \(closedAfterReturn), double-tap suspended \(ExtraTriggers.shared.suspended)")
+
+        // Esc cancels.
+        button.performClick(nil)
+        await wait()
+        if let m = button.debugModel { m.choose(97); trace("editor: reopened, picked F6 → \(m.combo?.display ?? "-")") }
+        send(KeyCode.escape, [], to: button.debugPopoverView)
+        let closedAfterEsc = await waitClosed(button)
+        trace("editor: after Esc → saved \(prefs.hotKey?.display ?? "none"), closed \(closedAfterEsc)")
+
+        // Clear.
+        button.performClick(nil)
+        await wait()
+        button.debugModel?.finish?(.set(nil))
+        _ = await waitClosed(button)
+        trace("editor: after Clear → saved \(prefs.hotKey?.display ?? "none"), box \(button.debugTitle)")
+        button.performClick(nil)
+        await wait()
+        trace("editor: reopened empty → open \(button.debugIsOpen), Clear off \(button.debugModel.map { $0.original == nil } ?? false)")
+        shot(button.debugPopoverView, "editor-empty.png")
+        button.debugModel?.finish?(.cancel)
+        _ = await waitClosed(button)
+
+        // ShortcutsLens's Change Shortcut takes an F-key alone, and refuses a bare letter.
+        trace("editor: Change Shortcut F5 → \(HotKeyCenter.shared.change(id: "hotKey", keyCode: 96, carbonModifiers: 0) ?? "ok"), saved \(prefs.hotKey?.display ?? "none")")
+        trace("editor: Change Shortcut K → \(HotKeyCenter.shared.change(id: "hotKey", keyCode: 40, carbonModifiers: 0) ?? "ok")")
+        await wait()
+        shot(window.contentView?.superview, "triggers.png")
+        prefs.hotKey = original
+        trace("editor: done, restored \(prefs.hotKey?.display ?? "none")")
     }
 
     /// Answers the quit question for `TOOLHUD_DEBUG_QUIT_TEST`, tracing what it showed first.

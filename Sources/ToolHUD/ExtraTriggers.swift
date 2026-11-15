@@ -19,6 +19,8 @@ final class ExtraTriggers {
     /// opened from it.
     private var cornerSince: Date?
     private var cornerArmed = true
+    /// While a shortcut is being set in Settings, a double-tapped modifier does nothing.
+    var suspended = false
 
     func apply() {
         stop()
@@ -80,7 +82,7 @@ final class ExtraTriggers {
         }
         // Keys ToolHUD presses for its buttons don't count.
         guard event.getIntegerValueField(.eventSourceUserData) != ActionRunner.eventMarker else { return }
-        if detector?.flagsChanged(Self.modifiers(event.flags), at: ProcessInfo.processInfo.systemUptime) == true {
+        if detector?.flagsChanged(Self.modifiers(event.flags), at: ProcessInfo.processInfo.systemUptime) == true, !suspended {
             HUDController.shared.toggle()
         }
     }

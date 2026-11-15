@@ -1334,7 +1334,7 @@ struct TriggersSettings: View {
             } header: {
                 Text("Open the HUD")
             } footer: {
-                Text("The HUD opens around the pointer, in every app, and stays open until you click a button. The shortcut again, or Esc, closes it.")
+                Text("The HUD opens around the pointer, in every app, and stays open until you click a button. The shortcut again, or Esc, closes it. Click the shortcut to change it: pick the modifier keys and type a key, or press the new shortcut.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
