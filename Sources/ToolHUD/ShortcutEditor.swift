@@ -72,10 +72,17 @@ struct ShortcutRecorder: NSViewRepresentable {
                 shortcut = key
                 onChange?(key)
             }
-            popover?.close()
+            // Clean up now rather than on popoverDidClose: that message can come late, or
+            // never when ToolHUD isn't in front, which would leave the shortcut unregistered.
+            let closing = popover
+            closed()
+            closing?.close()
         }
 
+        /// Removes the key monitor and registers the shortcut again. Runs once per editor,
+        /// whichever comes first: Set/Clear/Cancel, or the popover closing on its own.
         private func closed() {
+            guard popover != nil else { return }
             if let monitor { NSEvent.removeMonitor(monitor) }
             monitor = nil
             if let popover { PopoverCloser.shared.onClose[ObjectIdentifier(popover)] = nil }
@@ -87,7 +94,7 @@ struct ShortcutRecorder: NSViewRepresentable {
         }
 
         override func viewWillMove(toWindow newWindow: NSWindow?) {
-            if newWindow == nil { popover?.close() }
+            if newWindow == nil, let closing = popover { closed(); closing.close() }
             super.viewWillMove(toWindow: newWindow)
         }
 
