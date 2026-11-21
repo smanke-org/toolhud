@@ -93,7 +93,9 @@ final class MouseTriggers {
                 state = .waiting(down: copy, start: event.location, timer: timer)
                 return false
             case .optionRight:
-                guard event.flags.contains(.maskAlternate) else { return true }
+                // Option alone: ⌃⌥, ⌥⇧ and ⌘⌥ right-clicks stay free for other apps.
+                let mods = event.flags.intersection([.maskAlternate, .maskControl, .maskShift, .maskCommand])
+                guard mods == .maskAlternate else { return true }
                 state = .open
                 onOpen?()
                 return false
